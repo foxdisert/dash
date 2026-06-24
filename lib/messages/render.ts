@@ -20,32 +20,59 @@ function expiryPhrase(days: number | null): string {
   return `in ${days} days`;
 }
 
-/** Builds the M3U playlist URL + Xtream server from a line's base url + creds. */
+/**
+ * Resolves connection details from a line. Handles both shapes:
+ *  - base host in `url` + separate username/password columns (Dino), and
+ *  - a full M3U link in `url` with username/password embedded (Strong 8K).
+ */
 export function connectionLinks(client: Client): {
   m3uUrl: string;
   xtreamServer: string;
+  username: string;
+  password: string;
 } {
-  const base = (client.url ?? "").replace(/\/+$/, "");
-  const u = client.username ?? "";
-  const p = client.password ?? "";
-  if (!base) return { m3uUrl: "", xtreamServer: "" };
-  const m3uUrl =
-    u && p
-      ? `${base}/get.php?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}&type=m3u_plus&output=ts`
-      : "";
-  return { m3uUrl, xtreamServer: base };
+  const raw = (client.url ?? "").trim();
+  let username = client.username ?? "";
+  let password = client.password ?? "";
+  let xtreamServer = "";
+  let m3uUrl = "";
+
+  if (raw) {
+    try {
+      const u = new URL(raw);
+      const qpUser = u.searchParams.get("username");
+      const qpPass = u.searchParams.get("password");
+      if (u.pathname.includes("get.php") || qpUser) {
+        // full M3U link — extract host + embedded credentials
+        xtreamServer = `${u.protocol}//${u.host}`;
+        if (qpUser) username = qpUser;
+        if (qpPass) password = qpPass;
+        m3uUrl = raw;
+      } else {
+        xtreamServer = raw.replace(/\/+$/, "");
+      }
+    } catch {
+      xtreamServer = raw.replace(/\/+$/, "");
+    }
+  }
+
+  if (!m3uUrl && xtreamServer && username && password) {
+    m3uUrl = `${xtreamServer}/get.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&type=m3u_plus&output=ts`;
+  }
+
+  return { m3uUrl, xtreamServer, username, password };
 }
 
 /** Builds the full variable set for a client (client fields + business vars). */
 export function buildClientVars(client: Client): TemplateVars {
   const biz = getBusinessVars();
   const days = daysUntil(client.expireDate);
-  const { m3uUrl, xtreamServer } = connectionLinks(client);
+  const { m3uUrl, xtreamServer, username, password } = connectionLinks(client);
   return {
     ...biz,
     name: client.customerName?.trim() || "there",
-    username: client.username ?? "",
-    password: client.password ?? "",
+    username,
+    password,
     expiry_date: client.expireDate ?? "",
     days_left: days != null ? String(days) : "",
     expiry_phrase: expiryPhrase(days),

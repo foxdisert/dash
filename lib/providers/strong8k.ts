@@ -141,12 +141,26 @@ export class Strong8kProvider implements IptvProvider {
       notes: params.note,
     })) as Record<string, unknown>;
 
+    let username = d.username ? String(d.username) : undefined;
+    let password = d.password ? String(d.password) : undefined;
+    const url = d.url ? String(d.url) : undefined;
+    // Strong 8K embeds credentials in the M3U url — pull them out if absent.
+    if ((!username || !password) && url) {
+      try {
+        const qp = new URL(url).searchParams;
+        username = username ?? qp.get("username") ?? undefined;
+        password = password ?? qp.get("password") ?? undefined;
+      } catch {
+        /* ignore */
+      }
+    }
+
     return {
       userId: d.user_id ? String(d.user_id) : undefined,
-      username: d.username ? String(d.username) : undefined,
-      password: d.password ? String(d.password) : undefined,
+      username,
+      password,
       mac: d.mac ? String(d.mac) : params.mac,
-      url: d.url ? String(d.url) : undefined,
+      url,
       message: String(d.message ?? d.result ?? "Created"),
     };
   }
