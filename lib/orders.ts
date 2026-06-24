@@ -106,19 +106,40 @@ export function markOrderConverted(orderId: number, clientId: number): void {
     .run();
 }
 
-/** Sends a Telegram alert for a new order, if configured. */
+/** Escapes Telegram (legacy) Markdown special characters in a value. */
+function esc(v: unknown): string {
+  return String(v ?? "").replace(/([_*`\[])/g, "\\$1");
+}
+
+/** Sends a Telegram alert with the FULL order details, if configured. */
 export async function notifyNewOrder(orderId: number): Promise<void> {
   if (!telegramConfigured()) return;
   const o = db.select().from(orders).where(eq(orders.id, orderId)).get();
   if (!o) return;
+
+  const waDigits = (o.whatsapp ?? "").replace(/[^\d]/g, "");
+  const amount =
+    o.amount != null && o.amount !== ""
+      ? `${o.amount} ${o.currency ?? ""}`.trim()
+      : null;
+
   const lines = [
-    "🛒 *New order*",
-    o.fullName ? `• ${o.fullName}` : null,
-    o.planLabel ? `• ${o.planLabel}` : null,
-    o.amount ? `• ${o.amount} ${o.currency ?? ""}`.trim() : null,
-    o.paymentStatus ? `• ${o.paymentStatus}` : null,
-    o.whatsapp ? `• WA: ${o.whatsapp}` : null,
-    o.email ? `• ${o.email}` : null,
+    `🛒 *New order${o.externalId ? ` #${esc(o.externalId)}` : ""}*`,
+    "",
+    o.fullName ? `👤 *Name:* ${esc(o.fullName)}` : null,
+    o.email ? `📧 *Email:* ${esc(o.email)}` : null,
+    o.whatsapp
+      ? `📱 *WhatsApp:* ${esc(o.whatsapp)}${waDigits ? ` — [chat](https://wa.me/${waDigits})` : ""}`
+      : null,
+    o.planLabel ? `📦 *Plan:* ${esc(o.planLabel)}` : null,
+    o.connections != null ? `🔢 *Connections:* ${esc(o.connections)}` : null,
+    amount ? `💰 *Amount:* ${esc(amount)}` : null,
+    o.paymentStatus
+      ? `💳 *Payment:* ${esc(o.paymentStatus)}${o.paymentMode ? ` (${esc(o.paymentMode)})` : ""}`
+      : null,
+    o.transactionId ? `🧾 *Txn:* ${esc(o.transactionId)}` : null,
+    o.submittedAt ? `🕒 *Submitted:* ${esc(o.submittedAt)}` : null,
   ].filter(Boolean);
+
   await sendTelegram(lines.join("\n"));
 }
