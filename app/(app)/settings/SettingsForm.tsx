@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { NBBadge, NBButton, NBCard, NBInput, NBLabel } from "@/components/ui";
 import {
+  saveAgentPoints,
   saveBusinessSettings,
   saveSmtpSettings,
   saveTelegramSettings,
@@ -53,6 +54,7 @@ export function SettingsForm({
   smtp,
   business,
   ordersSecretSet,
+  points,
 }: {
   tokenConfigured: boolean;
   tokenFromEnv: boolean;
@@ -62,6 +64,7 @@ export function SettingsForm({
   smtp: SmtpProps;
   business: BusinessProps;
   ordersSecretSet: boolean;
+  points: { onboard: number; outreach: number; retention: number };
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -119,6 +122,17 @@ export function SettingsForm({
     startBiz(async () => {
       const res = await saveBusinessSettings(null, formData);
       setBizMsg(res);
+      toast.result(res);
+      if (res.ok) router.refresh();
+    });
+  }
+
+  const [pointsMsg, setPointsMsg] = useState<{ ok: boolean; message: string } | null>(null);
+  const [pointsPending, startPoints] = useTransition();
+  function onSavePoints(formData: FormData) {
+    startPoints(async () => {
+      const res = await saveAgentPoints(null, formData);
+      setPointsMsg(res);
       toast.result(res);
       if (res.ok) router.refresh();
     });
@@ -277,6 +291,39 @@ export function SettingsForm({
           <Flash msg={bizMsg} />
           <NBButton type="submit" color="lime" disabled={bizPending}>
             {bizPending ? "Saving…" : "Save business details"}
+          </NBButton>
+        </form>
+      </NBCard>
+
+      {/* ---------- Agent points ---------- */}
+      <NBCard className="bg-lime/30">
+        <h2 className="mb-3 text-xl font-bold">🏆 Agent points</h2>
+        <p className="mb-3 text-xs text-ink/60">
+          Points awarded to agents, shown on the Leaderboard.
+        </p>
+        <form action={onSavePoints} className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <NBLabel>Onboard a client</NBLabel>
+              <NBInput name="pointsOnboard" type="number" min={0} defaultValue={points.onboard} />
+            </div>
+            <div>
+              <NBLabel>Customer renews</NBLabel>
+              <NBInput name="pointsRetention" type="number" min={0} defaultValue={points.retention} />
+            </div>
+            <div>
+              <NBLabel>Contact client</NBLabel>
+              <NBInput name="pointsOutreach" type="number" min={0} defaultValue={points.outreach} />
+            </div>
+          </div>
+          <p className="text-xs text-ink/60">
+            Onboard = agent imports/converts a client. Renews = a customer the
+            agent owns places a new order. Contact = emailing a client (capped
+            once/day per client).
+          </p>
+          <Flash msg={pointsMsg} />
+          <NBButton type="submit" color="lime" disabled={pointsPending}>
+            {pointsPending ? "Saving…" : "Save point values"}
           </NBButton>
         </form>
       </NBCard>

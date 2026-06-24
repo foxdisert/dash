@@ -93,6 +93,23 @@ export async function saveBusinessSettings(
   return { ok: true, message: "Business details saved." };
 }
 
+export async function saveAgentPoints(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  if (!(await ensureAdmin())) return DENIED;
+  const clean = (v: FormDataEntryValue | null) => {
+    const n = Math.floor(Number(v));
+    return Number.isFinite(n) && n >= 0 ? String(n) : "0";
+  };
+  setSetting(SETTING_KEYS.pointsOnboard, clean(formData.get("pointsOnboard")));
+  setSetting(SETTING_KEYS.pointsOutreach, clean(formData.get("pointsOutreach")));
+  setSetting(SETTING_KEYS.pointsRetention, clean(formData.get("pointsRetention")));
+  revalidatePath("/settings");
+  revalidatePath("/leaderboard");
+  return { ok: true, message: "Point values saved." };
+}
+
 export async function sendTestEmail(to?: string): Promise<ActionResult> {
   if (!(await ensureAdmin())) return DENIED;
   const recipient = (to ?? "").trim() || getSmtpConfig().fromAddress;

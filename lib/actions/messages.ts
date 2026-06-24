@@ -8,6 +8,8 @@ import { getTemplate, updateTemplate } from "@/lib/messages/store";
 import { buildClientVars, renderTemplate } from "@/lib/messages/render";
 import { sendEmail } from "@/lib/notify/email";
 import { ensureAdmin } from "@/lib/auth/guard";
+import { getSession } from "@/lib/auth/session";
+import { awardPoints, outreachAwardedToday } from "@/lib/points";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -60,6 +62,15 @@ export async function sendClientEmail(
       message: `Sent “${tpl.name}” to ${client.customerEmail}`,
     })
     .run();
+
+  // Outreach points for agents (capped to once per client per day).
+  const session = await getSession();
+  if (session?.role === "agent") {
+    const agentId = Number(session.sub);
+    if (!outreachAwardedToday(agentId, clientId)) {
+      awardPoints(agentId, "outreach", { clientId, note: "Emailed client" });
+    }
+  }
 
   revalidatePath("/clients");
   revalidatePath("/");

@@ -45,6 +45,7 @@ export const clients = sqliteTable(
     source: text("source").notNull().default("created"), // created | imported
     userId: text("user_id"), // upstream user_id returned by the panel
     url: text("url"), // m3u url / portal url returned by the panel
+    assignedAgentId: integer("assigned_agent_id"), // owning agent (admin.id) for points
     lastSyncedAt: text("last_synced_at"),
     lastReminderAt: text("last_reminder_at"), // last auto expiry-reminder email
     createdAt: text("created_at")
@@ -151,6 +152,19 @@ export const appSettings = sqliteTable("app_settings", {
   key: text("key").primaryKey(),
   value: text("value"),
   updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+});
+
+/** Agent gamification points ledger (one row per awarded event). */
+export const agentPoints = sqliteTable("agent_points", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  agentUserId: integer("agent_user_id").notNull(), // admin.id of the agent
+  action: text("action").notNull(), // onboard | outreach | retention
+  points: integer("points").notNull().default(0),
+  clientId: integer("client_id"),
+  note: text("note"),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(CURRENT_TIMESTAMP)`),
 });

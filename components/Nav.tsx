@@ -9,6 +9,7 @@ import type { ExpiringNotification } from "@/lib/queries";
 const LINKS = [
   { href: "/", label: "Overview", icon: "📊", adminOnly: true },
   { href: "/clients", label: "Clients", icon: "👥", adminOnly: false },
+  { href: "/leaderboard", label: "Leaderboard", icon: "🏆", adminOnly: false },
   { href: "/orders", label: "Orders", icon: "🛒", adminOnly: true },
   { href: "/clients/new", label: "New line", icon: "➕", adminOnly: true },
   { href: "/bouquets", label: "Bouquets", icon: "📦", adminOnly: true },

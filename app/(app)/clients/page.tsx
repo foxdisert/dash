@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { clients, providers } from "@/lib/db/schema";
+import { admin as adminTable, clients, providers } from "@/lib/db/schema";
 import { getProviderKindMeta } from "@/lib/providers/registry";
 import { daysUntil, effectiveStatus } from "@/lib/queries";
 import { buildClientVars } from "@/lib/messages/render";
@@ -18,6 +18,13 @@ export default async function ClientsPage() {
   const admin = isAdmin(session);
   const provs = db.select().from(providers).all();
   const provMap = new Map(provs.map((p) => [p.id, p]));
+  const agentRows = db.select().from(adminTable).all();
+  const agentMap = new Map(
+    agentRows.map((a) => [a.id, a.displayName || a.username]),
+  );
+  const agents = agentRows
+    .filter((a) => a.role === "agent")
+    .map((a) => ({ id: a.id, name: a.displayName || a.username }));
   const templates = listTemplates().map((t) => ({
     key: t.key,
     name: t.name,
@@ -51,6 +58,10 @@ export default async function ClientsPage() {
         note: c.note,
         plan: c.plan,
         orderDate: c.orderDate,
+        assignedAgentId: c.assignedAgentId,
+        ownerName: c.assignedAgentId
+          ? (agentMap.get(c.assignedAgentId) ?? null)
+          : null,
         customerName: c.customerName,
         customerEmail: c.customerEmail,
         customerPhone: c.customerPhone,
@@ -98,6 +109,7 @@ export default async function ClientsPage() {
           templates={templates}
           emailReady={emailReady}
           isAdmin={admin}
+          agents={agents}
         />
       )}
     </div>

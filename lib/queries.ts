@@ -1,7 +1,14 @@
 import "server-only";
 import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { activityLog, clients, orders, providers } from "@/lib/db/schema";
+import {
+  activityLog,
+  admin,
+  agentPoints,
+  clients,
+  orders,
+  providers,
+} from "@/lib/db/schema";
 import { clientFor } from "@/lib/providers";
 import { getNotifyDays } from "@/lib/settings";
 
@@ -154,6 +161,48 @@ export function getOrders() {
 
 export function getOrder(id: number) {
   return db.select().from(orders).where(eq(orders.id, id)).get();
+}
+
+export type LeaderboardRow = {
+  agentId: number;
+  name: string;
+  points: number;
+  onboard: number;
+  outreach: number;
+  retention: number;
+};
+
+/** Agent points ranking for a period ("month" = current month, or "all"). */
+export function getLeaderboard(period: "month" | "all"): LeaderboardRow[] {
+  const rows = db
+    .select({
+      agentId: agentPoints.agentUserId,
+      username: admin.username,
+      displayName: admin.displayName,
+      points: sql<number>`COALESCE(SUM(${agentPoints.points}),0)`,
+      onboard: sql<number>`SUM(CASE WHEN ${agentPoints.action}='onboard' THEN 1 ELSE 0 END)`,
+      outreach: sql<number>`SUM(CASE WHEN ${agentPoints.action}='outreach' THEN 1 ELSE 0 END)`,
+      retention: sql<number>`SUM(CASE WHEN ${agentPoints.action}='retention' THEN 1 ELSE 0 END)`,
+    })
+    .from(agentPoints)
+    .innerJoin(admin, eq(admin.id, agentPoints.agentUserId))
+    .where(
+      period === "month"
+        ? sql`substr(${agentPoints.createdAt},1,7) = ${new Date().toISOString().slice(0, 7)}`
+        : sql`1=1`,
+    )
+    .groupBy(agentPoints.agentUserId)
+    .orderBy(sql`points DESC`)
+    .all();
+
+  return rows.map((r) => ({
+    agentId: r.agentId,
+    name: r.displayName || r.username,
+    points: Number(r.points),
+    onboard: Number(r.onboard),
+    outreach: Number(r.outreach),
+    retention: Number(r.retention),
+  }));
 }
 
 export function getProviderName(id: number | null): string {

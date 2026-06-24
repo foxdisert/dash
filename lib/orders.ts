@@ -1,8 +1,9 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orders, type Order } from "@/lib/db/schema";
+import { clients, orders, type Order } from "@/lib/db/schema";
 import { sendTelegram, telegramConfigured } from "@/lib/notify/telegram";
+import { awardPoints } from "@/lib/points";
 
 /** Picks the first present value among several possible keys. */
 function pick(obj: Record<string, unknown>, ...keys: string[]): string | undefined {
@@ -67,6 +68,23 @@ export function recordOrder(body: Record<string, unknown>): RecordOrderResult {
       status: "new",
     })
     .run();
+
+  // Retention: if this order's email matches an existing client owned by an
+  // agent, that's a renewal/re-order — credit the owning agent.
+  const email = pick(body, "email", "email_address", "emailAddress");
+  if (email) {
+    const owned = db
+      .select()
+      .from(clients)
+      .where(sql`lower(${clients.customerEmail}) = ${email.toLowerCase()}`)
+      .get();
+    if (owned?.assignedAgentId) {
+      awardPoints(owned.assignedAgentId, "retention", {
+        clientId: owned.id,
+        note: "Customer re-ordered",
+      });
+    }
+  }
 
   return { ok: true, orderId: Number(inserted.lastInsertRowid), duplicate: false };
 }

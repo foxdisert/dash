@@ -10,6 +10,7 @@ import {
 } from "@/lib/settings";
 import { SettingsForm } from "./SettingsForm";
 import { requireAdmin } from "@/lib/auth/guard";
+import { getPointValues } from "@/lib/points";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,7 @@ export default async function SettingsPage() {
         }}
         business={biz}
         ordersSecretSet={ordersSecretSet}
+        points={getPointValues()}
       />
     </div>
   );

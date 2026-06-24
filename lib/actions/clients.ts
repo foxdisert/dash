@@ -7,7 +7,9 @@ import { activityLog, clients } from "@/lib/db/schema";
 import { clientForId } from "@/lib/providers";
 import type { ClientType, DeviceLookupParams } from "@/lib/providers/types";
 import { ensureAdmin } from "@/lib/auth/guard";
+import { getSession } from "@/lib/auth/session";
 import { markOrderConverted } from "@/lib/orders";
+import { awardPoints } from "@/lib/points";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -55,6 +57,11 @@ export async function importClient(
     return { ok: false, message: "Username is required." };
 
   try {
+    // Agent who performs the import owns the client and earns onboarding points.
+    const session = await getSession();
+    const isAgent = session?.role === "agent";
+    const actorId = session ? Number(session.sub) : null;
+
     const res = db
       .insert(clients)
       .values({
@@ -69,21 +76,30 @@ export async function importClient(
         orderDate,
         note,
         ...contact,
+        assignedAgentId: isAgent ? actorId : null,
         source: "imported",
         status: "unknown",
       })
       .run();
+    const newId = Number(res.lastInsertRowid);
 
     db.insert(activityLog)
       .values({
         providerId,
-        clientId: Number(res.lastInsertRowid),
+        clientId: newId,
         action: "import",
         message: `Imported ${type} ${username ?? mac}`,
       })
       .run();
 
-    if (orderId) markOrderConverted(orderId, Number(res.lastInsertRowid));
+    if (isAgent && actorId) {
+      awardPoints(actorId, "onboard", {
+        clientId: newId,
+        note: orderId ? "Converted website order" : "Imported client",
+      });
+    }
+
+    if (orderId) markOrderConverted(orderId, newId);
 
     revalidatePath("/clients");
     revalidatePath("/");
@@ -302,6 +318,12 @@ export async function updateClientDetails(
   if (!id) return { ok: false, message: "Missing client id." };
 
   const contact = readContact(formData);
+  // Owner reassignment is admin-only.
+  const ownerRaw = formData.get("assignedAgentId");
+  const setOwner =
+    ownerRaw != null && (await ensureAdmin())
+      ? { assignedAgentId: Number(ownerRaw) || null }
+      : {};
   try {
     db.update(clients)
       .set({
@@ -309,6 +331,7 @@ export async function updateClientDetails(
         customerName: contact.customerName,
         customerEmail: contact.customerEmail,
         customerPhone: contact.customerPhone,
+        ...setOwner,
       })
       .where(eq(clients.id, id))
       .run();

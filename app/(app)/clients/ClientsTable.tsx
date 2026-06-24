@@ -27,6 +27,8 @@ export type ClientRow = {
   note: string | null;
   plan: string | null;
   orderDate: string | null;
+  assignedAgentId: number | null;
+  ownerName: string | null;
   customerName: string | null;
   customerEmail: string | null;
   customerPhone: string | null;
@@ -57,12 +59,14 @@ export function ClientsTable({
   templates,
   emailReady,
   isAdmin,
+  agents,
 }: {
   rows: ClientRow[];
   providers: { id: number; name: string }[];
   templates: MsgTemplate[];
   emailReady: boolean;
   isAdmin: boolean;
+  agents: { id: number; name: string }[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -239,6 +243,7 @@ export function ClientsTable({
             templates={templates}
             emailReady={emailReady}
             isAdmin={isAdmin}
+            agents={agents}
           />
         ))}
       </div>
@@ -251,11 +256,13 @@ function ClientCard({
   templates,
   emailReady,
   isAdmin,
+  agents,
 }: {
   row: ClientRow;
   templates: MsgTemplate[];
   emailReady: boolean;
   isAdmin: boolean;
+  agents: { id: number; name: string }[];
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -321,6 +328,7 @@ function ClientCard({
               row.days <= 30 &&
               ` (${row.days}d left)`}
             {row.orderDate && ` · ordered ${row.orderDate}`}
+            {row.ownerName && ` · 👤 ${row.ownerName}`}
           </p>
 
           {hasContact && (
@@ -412,6 +420,22 @@ function ClientCard({
             <NBLabel>Note</NBLabel>
             <NBInput name="note" defaultValue={row.note ?? ""} />
           </div>
+          {isAdmin && agents.length > 0 && (
+            <div>
+              <NBLabel>Assigned agent (owner)</NBLabel>
+              <NBSelect
+                name="assignedAgentId"
+                defaultValue={row.assignedAgentId ?? ""}
+              >
+                <option value="">— unassigned —</option>
+                {agents.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </NBSelect>
+            </div>
+          )}
           <div className="flex gap-2">
             <NBButton type="submit" color="lime" disabled={busy}>
               {busy ? "Saving…" : "Save details"}

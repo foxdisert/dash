@@ -23,6 +23,10 @@ export const SETTING_KEYS = {
   installationUrl: "installation_url",
   downloaderCode: "downloader_code",
   paymentDetails: "payment_details",
+  // Agent gamification point values
+  pointsOnboard: "points_onboard",
+  pointsOutreach: "points_outreach",
+  pointsRetention: "points_retention",
 } as const;
 
 const SECRET_KEYS = new Set<string>([
