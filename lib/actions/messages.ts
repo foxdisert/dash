@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { activityLog, clients } from "@/lib/db/schema";
+import { activityLog, clients, providers } from "@/lib/db/schema";
 import { getTemplate, updateTemplate } from "@/lib/messages/store";
 import { buildClientVars, renderTemplate } from "@/lib/messages/render";
 import { swapHost } from "@/lib/messages/clientRender";
@@ -49,7 +49,8 @@ export async function sendClientEmail(
   const tpl = getTemplate(templateKey);
   if (!tpl) return { ok: false, message: "Template not found." };
 
-  const vars = buildClientVars(client);
+  const prov = db.select().from(providers).where(eq(providers.id, client.providerId)).get();
+  const vars = buildClientVars(client, prov?.host);
   // Use the chosen custom host (branded domain) for the links, if any.
   if (host) {
     vars.m3u_url = swapHost(vars.m3u_url, host);

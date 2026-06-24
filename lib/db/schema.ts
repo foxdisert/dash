@@ -12,6 +12,7 @@ export const providers = sqliteTable("providers", {
   name: text("name").notNull(),
   kind: text("kind").notNull(), // matches a key in the provider registry, e.g. "tvpluspanel"
   baseUrl: text("base_url").notNull(),
+  host: text("host"), // M3U/Xtream host domain for this panel (e.g. yourdomain.store)
   apiKeyEncrypted: text("api_key_encrypted").notNull(),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at")

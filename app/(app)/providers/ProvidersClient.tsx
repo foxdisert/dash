@@ -25,6 +25,7 @@ type Row = {
   name: string;
   kind: string;
   baseUrl: string;
+  host: string;
   enabled: boolean;
 };
 
@@ -152,6 +153,14 @@ function AddProviderForm({ kinds }: { kinds: ProviderKindMeta[] }) {
             onChange={(e) => setApiKey(e.target.value)}
           />
         </div>
+        <div>
+          <NBLabel>M3U / Xtream host domain (optional)</NBLabel>
+          <NBInput name="host" placeholder="e.g. letsdream8k.store" />
+          <p className="mt-1 text-xs text-ink/60">
+            The domain used in clients’ M3U/Xtream links. Needed for panels (like
+            Dino) that return links without a host.
+          </p>
+        </div>
 
         {meta && (
           <p className="text-xs text-ink/60">
@@ -232,8 +241,17 @@ function ProviderRow({ row, kinds }: { row: Row; kinds: ProviderKindMeta[] }) {
       {editing ? (
         <form action={onSaveEdit} className="mt-3 space-y-2">
           <input type="hidden" name="id" value={row.id} />
+          <NBLabel>Name</NBLabel>
           <NBInput name="name" defaultValue={row.name} />
+          <NBLabel>Base URL</NBLabel>
           <NBInput name="baseUrl" defaultValue={row.baseUrl} />
+          <NBLabel>M3U / Xtream host domain</NBLabel>
+          <NBInput
+            name="host"
+            defaultValue={row.host}
+            placeholder="e.g. letsdream8k.store"
+          />
+          <NBLabel>API key</NBLabel>
           <NBInput
             name="apiKey"
             type="password"

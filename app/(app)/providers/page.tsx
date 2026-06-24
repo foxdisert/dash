@@ -17,6 +17,7 @@ export default async function ProvidersPage() {
     name: r.name,
     kind: r.kind,
     baseUrl: r.baseUrl,
+    host: r.host ?? "",
     enabled: r.enabled,
   }));
 

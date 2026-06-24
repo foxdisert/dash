@@ -67,7 +67,7 @@ export default async function ClientsPage() {
         customerPhone: c.customerPhone,
         lastSyncedAt: c.lastSyncedAt,
         renewSubs: subs.filter((s) => s !== 99),
-        vars: buildClientVars(c),
+        vars: buildClientVars(c, prov?.host),
       };
     });
 
