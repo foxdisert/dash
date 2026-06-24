@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { activityLog, clients } from "@/lib/db/schema";
 import { getTemplate, updateTemplate } from "@/lib/messages/store";
 import { buildClientVars, renderTemplate } from "@/lib/messages/render";
+import { swapHost } from "@/lib/messages/clientRender";
 import { sendEmail } from "@/lib/notify/email";
 import { ensureAdmin } from "@/lib/auth/guard";
 import { getSession } from "@/lib/auth/session";
@@ -38,6 +39,7 @@ export async function saveTemplate(
 export async function sendClientEmail(
   clientId: number,
   templateKey: string,
+  host?: string,
 ): Promise<ActionResult> {
   const client = db.select().from(clients).where(eq(clients.id, clientId)).get();
   if (!client) return { ok: false, message: "Client not found." };
@@ -48,6 +50,12 @@ export async function sendClientEmail(
   if (!tpl) return { ok: false, message: "Template not found." };
 
   const vars = buildClientVars(client);
+  // Use the chosen custom host (branded domain) for the links, if any.
+  if (host) {
+    vars.m3u_url = swapHost(vars.m3u_url, host);
+    vars.xtream_server = swapHost(vars.xtream_server, host);
+    vars.xtream_url = vars.xtream_server;
+  }
   const subject = renderTemplate(tpl.subject ?? "", vars);
   const text = renderTemplate(tpl.body, vars);
 

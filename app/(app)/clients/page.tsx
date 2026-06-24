@@ -6,7 +6,7 @@ import { getProviderKindMeta } from "@/lib/providers/registry";
 import { daysUntil, effectiveStatus } from "@/lib/queries";
 import { buildClientVars } from "@/lib/messages/render";
 import { listTemplates } from "@/lib/messages/store";
-import { smtpConfigured } from "@/lib/settings";
+import { smtpConfigured, getCustomDomains } from "@/lib/settings";
 import { requireSession, isAdmin } from "@/lib/auth/guard";
 import { ClientsTable, type ClientRow } from "./ClientsTable";
 import { NBCard } from "@/components/ui";
@@ -110,6 +110,7 @@ export default async function ClientsPage() {
           emailReady={emailReady}
           isAdmin={admin}
           agents={agents}
+          customDomains={getCustomDomains()}
         />
       )}
     </div>

@@ -23,6 +23,7 @@ export const SETTING_KEYS = {
   installationUrl: "installation_url",
   downloaderCode: "downloader_code",
   paymentDetails: "payment_details",
+  customDomains: "custom_domains", // newline/comma separated host domains
   // Agent gamification point values
   pointsOnboard: "points_onboard",
   pointsOutreach: "points_outreach",
@@ -142,6 +143,15 @@ export function getBusinessVars(): {
     downloader_code: getSetting(SETTING_KEYS.downloaderCode) ?? "",
     payment_details: getSetting(SETTING_KEYS.paymentDetails) ?? "",
   };
+}
+
+/** Custom host domains (for branded M3U/Xtream links), parsed from settings. */
+export function getCustomDomains(): string[] {
+  const raw = getSetting(SETTING_KEYS.customDomains) ?? "";
+  return raw
+    .split(/[\n,]+/)
+    .map((d) => d.trim().replace(/^https?:\/\//, "").replace(/\/+$/, ""))
+    .filter(Boolean);
 }
 
 /** Whether the chat id / token came from the DB (vs env fallback). */

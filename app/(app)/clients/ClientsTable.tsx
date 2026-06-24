@@ -11,7 +11,7 @@ import {
   updateClientDetails,
 } from "@/lib/actions/clients";
 import { sendClientEmail } from "@/lib/actions/messages";
-import { applyVars, waLink } from "@/lib/messages/clientRender";
+import { applyVars, swapHost, waLink } from "@/lib/messages/clientRender";
 import { useToast } from "@/components/Toast";
 
 export type ClientRow = {
@@ -63,6 +63,7 @@ export function ClientsTable({
   emailReady,
   isAdmin,
   agents,
+  customDomains,
 }: {
   rows: ClientRow[];
   providers: { id: number; name: string }[];
@@ -70,6 +71,7 @@ export function ClientsTable({
   emailReady: boolean;
   isAdmin: boolean;
   agents: { id: number; name: string }[];
+  customDomains: string[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -248,6 +250,7 @@ export function ClientsTable({
             emailReady={emailReady}
             isAdmin={isAdmin}
             agents={agents}
+            customDomains={customDomains}
           />
         ))}
       </div>
@@ -261,12 +264,14 @@ function ClientCard({
   emailReady,
   isAdmin,
   agents,
+  customDomains,
 }: {
   row: ClientRow;
   templates: MsgTemplate[];
   emailReady: boolean;
   isAdmin: boolean;
   agents: { id: number; name: string }[];
+  customDomains: string[];
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -275,6 +280,7 @@ function ClientCard({
   const [editOpen, setEditOpen] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsHost, setDetailsHost] = useState("");
   const [renewSub, setRenewSub] = useState(row.renewSubs[0] ?? 1);
 
   const m3uUrl = row.vars.m3u_url || "";
@@ -531,32 +537,63 @@ function ClientCard({
         </div>
       )}
 
-      {detailsOpen && (
-        <div className="mt-3 space-y-2 rounded-lg border-2 border-dashed border-ink p-3">
-          <p className="text-sm font-bold">📺 Connection details</p>
-          {m3uUrl && (
-            <CopyRow label="M3U / Smart TV link" value={m3uUrl} onCopied={toast.success} />
-          )}
-          {xtreamServer && (
-            <>
-              <CopyRow label="Xtream server URL" value={xtreamServer} onCopied={toast.success} />
-              {row.username && (
-                <CopyRow label="Username" value={row.username} onCopied={toast.success} />
+      {detailsOpen &&
+        (() => {
+          const m3u = detailsHost ? swapHost(m3uUrl, detailsHost) : m3uUrl;
+          const server = detailsHost
+            ? swapHost(xtreamServer, detailsHost)
+            : xtreamServer;
+          return (
+            <div className="mt-3 space-y-2 rounded-lg border-2 border-dashed border-ink p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold">📺 Connection details</p>
+                {customDomains.length > 0 && (
+                  <div className="flex items-center gap-1 text-xs">
+                    <span className="font-bold">Host:</span>
+                    <NBSelect
+                      value={detailsHost}
+                      onChange={(e) => setDetailsHost(e.target.value)}
+                      className="w-auto py-1"
+                    >
+                      <option value="">Default</option>
+                      {customDomains.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </NBSelect>
+                  </div>
+                )}
+              </div>
+              {m3u && (
+                <CopyRow label="M3U / Smart TV link" value={m3u} onCopied={toast.success} />
               )}
-              {row.vars.password && (
-                <CopyRow label="Password" value={row.vars.password} onCopied={toast.success} />
+              {server && (
+                <>
+                  <CopyRow label="Xtream server URL" value={server} onCopied={toast.success} />
+                  {row.username && (
+                    <CopyRow label="Username" value={row.username} onCopied={toast.success} />
+                  )}
+                  {row.vars.password && (
+                    <CopyRow label="Password" value={row.vars.password} onCopied={toast.success} />
+                  )}
+                </>
               )}
-            </>
-          )}
-          <p className="text-xs text-ink/60">
-            Use <strong>✉️ Message → Subscription / login details</strong> to send
-            these to the customer.
-          </p>
-        </div>
-      )}
+              <p className="text-xs text-ink/60">
+                Use <strong>✉️ Message → Subscription / login details</strong> to
+                send these to the customer.
+              </p>
+            </div>
+          );
+        })()}
 
       {msgOpen && (
-        <MessagePanel row={row} templates={templates} emailReady={emailReady} />
+        <MessagePanel
+          row={row}
+          templates={templates}
+          emailReady={emailReady}
+          customDomains={customDomains}
+        />
       )}
     </NBCard>
   );
@@ -597,23 +634,36 @@ function MessagePanel({
   row,
   templates,
   emailReady,
+  customDomains,
 }: {
   row: ClientRow;
   templates: MsgTemplate[];
   emailReady: boolean;
+  customDomains: string[];
 }) {
   const toast = useToast();
   const [key, setKey] = useState(templates[0]?.key ?? "");
+  const [host, setHost] = useState("");
   const [sending, setSending] = useState(false);
   const tpl = templates.find((t) => t.key === key);
 
-  const subject = tpl ? applyVars(tpl.subject, row.vars) : "";
-  const bodyText = tpl ? applyVars(tpl.body, row.vars) : "";
+  // Apply the chosen branded host to the link variables.
+  const vars = host
+    ? {
+        ...row.vars,
+        m3u_url: swapHost(row.vars.m3u_url ?? "", host),
+        xtream_server: swapHost(row.vars.xtream_server ?? "", host),
+        xtream_url: swapHost(row.vars.xtream_url ?? "", host),
+      }
+    : row.vars;
+
+  const subject = tpl ? applyVars(tpl.subject, vars) : "";
+  const bodyText = tpl ? applyVars(tpl.body, vars) : "";
   const wa = row.customerPhone ? waLink(row.customerPhone, bodyText) : null;
 
   async function onSendEmail() {
     setSending(true);
-    const res = await sendClientEmail(row.id, key);
+    const res = await sendClientEmail(row.id, key, host || undefined);
     toast.result(res);
     setSending(false);
   }
@@ -646,6 +696,21 @@ function MessagePanel({
             </option>
           ))}
         </NBSelect>
+        {customDomains.length > 0 && (
+          <NBSelect
+            value={host}
+            onChange={(e) => setHost(e.target.value)}
+            className="w-auto"
+            title="Host for the M3U / Xtream links"
+          >
+            <option value="">Host: Default</option>
+            {customDomains.map((d) => (
+              <option key={d} value={d}>
+                Host: {d}
+              </option>
+            ))}
+          </NBSelect>
+        )}
       </div>
 
       <div className="rounded-lg border-2 border-ink bg-white p-3">

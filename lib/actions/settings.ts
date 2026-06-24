@@ -86,8 +86,10 @@ export async function saveBusinessSettings(
   setSetting(SETTING_KEYS.installationUrl, String(formData.get("installationUrl") ?? "").trim());
   setSetting(SETTING_KEYS.downloaderCode, String(formData.get("downloaderCode") ?? "").trim());
   setSetting(SETTING_KEYS.paymentDetails, String(formData.get("paymentDetails") ?? "").trim());
+  setSetting(SETTING_KEYS.customDomains, String(formData.get("customDomains") ?? "").trim());
 
   revalidatePath("/settings");
+  revalidatePath("/clients");
   revalidatePath("/messages");
   revalidatePath("/clients");
   return { ok: true, message: "Business details saved." };
