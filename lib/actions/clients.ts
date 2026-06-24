@@ -50,11 +50,20 @@ export async function importClient(
   const plan = str(formData.get("plan")) ?? null;
   const orderDate = str(formData.get("orderDate")) ?? null;
 
+  // "Pending setup" = a customer captured without line credentials yet
+  // (e.g. an agent who can't create panel lines). Admin provisions later.
+  const isPending = !username && !mac;
+
   if (!providerId) return { ok: false, message: "Pick a provider." };
-  if (type === "mag" && !mac)
-    return { ok: false, message: "MAG lines need a MAC address." };
-  if (type !== "mag" && !username)
-    return { ok: false, message: "Username is required." };
+  if (isPending) {
+    if (!contact.customerName && !contact.customerEmail)
+      return { ok: false, message: "Add at least a customer name or email." };
+  } else {
+    if (type === "mag" && !mac)
+      return { ok: false, message: "MAG lines need a MAC address." };
+    if (type !== "mag" && !username)
+      return { ok: false, message: "Username is required." };
+  }
 
   try {
     // Agent who performs the import owns the client and earns onboarding points.
@@ -78,7 +87,7 @@ export async function importClient(
         ...contact,
         assignedAgentId: isAgent ? actorId : null,
         source: "imported",
-        status: "unknown",
+        status: isPending ? "pending" : "unknown",
       })
       .run();
     const newId = Number(res.lastInsertRowid);
@@ -88,7 +97,9 @@ export async function importClient(
         providerId,
         clientId: newId,
         action: "import",
-        message: `Imported ${type} ${username ?? mac}`,
+        message: isPending
+          ? `Added customer ${contact.customerName ?? contact.customerEmail} (pending setup)`
+          : `Imported ${type} ${username ?? mac}`,
       })
       .run();
 
@@ -104,7 +115,12 @@ export async function importClient(
     revalidatePath("/clients");
     revalidatePath("/");
     revalidatePath("/orders");
-    return { ok: true, message: "Client imported." };
+    return {
+      ok: true,
+      message: isPending
+        ? "Customer added — pending line setup by admin."
+        : "Client imported.",
+    };
   } catch (e) {
     return { ok: false, message: err(e) };
   }
@@ -318,12 +334,23 @@ export async function updateClientDetails(
   if (!id) return { ok: false, message: "Missing client id." };
 
   const contact = readContact(formData);
-  // Owner reassignment is admin-only.
-  const ownerRaw = formData.get("assignedAgentId");
-  const setOwner =
-    ownerRaw != null && (await ensureAdmin())
-      ? { assignedAgentId: Number(ownerRaw) || null }
-      : {};
+  // Owner reassignment + line provisioning are admin-only.
+  const adminFields: Record<string, unknown> = {};
+  if (await ensureAdmin()) {
+    const ownerRaw = formData.get("assignedAgentId");
+    if (ownerRaw != null) adminFields.assignedAgentId = Number(ownerRaw) || null;
+    // Provision the line (only set fields that were filled — blanks keep current).
+    const u = str(formData.get("username"));
+    if (u) adminFields.username = u;
+    const pw = str(formData.get("password"));
+    if (pw) adminFields.password = pw;
+    const m = str(formData.get("mac"));
+    if (m) adminFields.mac = m;
+    const ex = str(formData.get("expireDate"));
+    if (ex) adminFields.expireDate = ex;
+    const st = str(formData.get("status"));
+    if (st) adminFields.status = st;
+  }
   try {
     db.update(clients)
       .set({
@@ -331,7 +358,7 @@ export async function updateClientDetails(
         customerName: contact.customerName,
         customerEmail: contact.customerEmail,
         customerPhone: contact.customerPhone,
-        ...setOwner,
+        ...adminFields,
       })
       .where(eq(clients.id, id))
       .run();

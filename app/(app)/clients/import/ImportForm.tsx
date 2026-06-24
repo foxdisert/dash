@@ -28,9 +28,13 @@ type Prefill = {
 export function ImportForm({
   providers,
   prefill,
+  isAdmin,
+  planOptions,
 }: {
   providers: ImportProviderOption[];
   prefill?: Prefill;
+  isAdmin: boolean;
+  planOptions: string[];
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -40,6 +44,13 @@ export function ImportForm({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(
     null,
+  );
+
+  // Plan: dropdown of known plans + free-text fallback.
+  const initialPlan = prefill?.plan ?? "";
+  const [plan, setPlan] = useState(initialPlan);
+  const [planOther, setPlanOther] = useState(
+    Boolean(initialPlan) && !planOptions.includes(initialPlan),
   );
 
   async function onSubmit(formData: FormData) {
@@ -56,75 +67,128 @@ export function ImportForm({
     <form action={onSubmit}>
       <NBCard className="max-w-xl bg-blue/30">
         <input type="hidden" name="type" value={type} />
+        <input type="hidden" name="plan" value={plan} />
         {prefill && (
           <>
             <input type="hidden" name="orderId" value={prefill.orderId} />
-            <input type="hidden" name="plan" value={prefill.plan ?? ""} />
             <input type="hidden" name="orderDate" value={prefill.orderDate ?? ""} />
           </>
         )}
 
-        <div className="mb-4">
-          <NBLabel>Provider</NBLabel>
-          <NBSelect
-            name="providerId"
-            value={providerId}
-            onChange={(e) => {
-              const id = Number(e.target.value);
-              setProviderId(id);
-              const p = providers.find((x) => x.id === id)!;
-              setType(p.supportedTypes[0]);
-            }}
-          >
-            {providers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </NBSelect>
-        </div>
-
-        <div className="mb-4">
-          <NBLabel>Type</NBLabel>
-          <div className="flex gap-2">
-            {provider.supportedTypes.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setType(t)}
-                className={`nb-btn flex-1 ${type === t ? "bg-pink" : "bg-white"}`}
-              >
-                {t.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {type === "mag" ? (
+        {providers.length > 1 && (
           <div className="mb-4">
-            <NBLabel>MAC address</NBLabel>
-            <NBInput name="mac" placeholder="00:1A:79:xx:xx:xx" />
+            <NBLabel>Provider</NBLabel>
+            <NBSelect
+              name="providerId"
+              value={providerId}
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                setProviderId(id);
+                const p = providers.find((x) => x.id === id)!;
+                setType(p.supportedTypes[0]);
+              }}
+            >
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </NBSelect>
           </div>
-        ) : (
-          <>
-            <div className="mb-4">
-              <NBLabel>Username</NBLabel>
-              <NBInput name="username" placeholder="line username" />
-            </div>
-            <div className="mb-4">
-              <NBLabel>Password</NBLabel>
-              <NBInput name="password" placeholder="line password" />
-            </div>
-          </>
+        )}
+        {providers.length <= 1 && (
+          <input type="hidden" name="providerId" value={providerId} />
         )}
 
+        {/* Plan (both roles) */}
         <div className="mb-4">
-          <NBLabel>Expiry date (optional)</NBLabel>
-          <NBInput name="expireDate" type="date" />
+          <NBLabel>Plan</NBLabel>
+          {!planOther ? (
+            <NBSelect
+              value={plan}
+              onChange={(e) => {
+                if (e.target.value === "__other__") {
+                  setPlanOther(true);
+                  setPlan("");
+                } else setPlan(e.target.value);
+              }}
+            >
+              <option value="">— choose a plan —</option>
+              {planOptions.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+              <option value="__other__">Other (type it)…</option>
+            </NBSelect>
+          ) : (
+            <div className="flex gap-2">
+              <NBInput
+                value={plan}
+                onChange={(e) => setPlan(e.target.value)}
+                placeholder="e.g. 6 Months Premium"
+              />
+              <NBButton
+                type="button"
+                onClick={() => {
+                  setPlanOther(false);
+                  setPlan("");
+                }}
+              >
+                List
+              </NBButton>
+            </div>
+          )}
         </div>
 
+        {/* Line credentials — ADMIN ONLY (these come from the provider panel) */}
+        {isAdmin && (
+          <div className="mb-4 rounded-lg border-2 border-dashed border-ink p-3">
+            <p className="mb-3 text-sm font-bold">
+              🔑 Line credentials (optional — leave blank to mark “pending setup”)
+            </p>
+            <div className="mb-3">
+              <NBLabel>Type</NBLabel>
+              <div className="flex gap-2">
+                {provider.supportedTypes.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setType(t)}
+                    className={`nb-btn flex-1 ${type === t ? "bg-pink" : "bg-white"}`}
+                  >
+                    {t.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {type === "mag" ? (
+              <div className="mb-3">
+                <NBLabel>MAC address</NBLabel>
+                <NBInput name="mac" placeholder="00:1A:79:xx:xx:xx" />
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <NBLabel>Username</NBLabel>
+                  <NBInput name="username" placeholder="line username" />
+                </div>
+                <div>
+                  <NBLabel>Password</NBLabel>
+                  <NBInput name="password" placeholder="line password" />
+                </div>
+              </div>
+            )}
+            <div className="mt-3">
+              <NBLabel>Expiry date (optional)</NBLabel>
+              <NBInput name="expireDate" type="date" />
+            </div>
+          </div>
+        )}
+
+        {/* Customer details */}
         <div className="mb-4 rounded-lg border-2 border-dashed border-ink p-3">
-          <p className="mb-3 text-sm font-bold">👤 Customer details (optional)</p>
+          <p className="mb-3 text-sm font-bold">👤 Customer details</p>
           <CustomerFields
             defaults={
               prefill
@@ -138,7 +202,7 @@ export function ImportForm({
           <NBLabel>Note (optional)</NBLabel>
           <NBInput
             name="note"
-            placeholder="Anything else…"
+            placeholder="Device, anything else…"
             defaultValue={prefill?.note ?? ""}
           />
         </div>
@@ -153,13 +217,15 @@ export function ImportForm({
           </p>
         )}
 
-        <p className="mb-3 text-xs text-ink/60">
-          Tip: after importing, hit <strong>Sync</strong> on the client to pull
-          its real expiry and status from the panel.
-        </p>
+        {!isAdmin && (
+          <p className="mb-3 text-xs text-ink/60">
+            The admin will set up the actual line (username/password) on the panel
+            and activate it. You don’t need those details.
+          </p>
+        )}
 
         <NBButton type="submit" color="lime" disabled={busy}>
-          {busy ? "Importing…" : "Import client (free)"}
+          {busy ? "Saving…" : isAdmin ? "Save client (free)" : "Add customer"}
         </NBButton>
       </NBCard>
     </form>

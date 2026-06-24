@@ -20,14 +20,22 @@ export function daysUntil(dateStr: string | null | undefined): number | null {
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
 }
 
+export type ClientStatus =
+  | "active"
+  | "expired"
+  | "disabled"
+  | "pending"
+  | "unknown";
+
 export function effectiveStatus(
   status: string,
   expireDate: string | null,
-): "active" | "expired" | "disabled" | "unknown" {
+): ClientStatus {
+  if (status === "pending") return "pending"; // awaiting line setup
   if (status === "disabled") return "disabled";
   const d = daysUntil(expireDate);
   if (d != null) return d < 0 ? "expired" : "active";
-  return (status as "active" | "expired" | "disabled" | "unknown") ?? "unknown";
+  return (status as ClientStatus) ?? "unknown";
 }
 
 export type ProviderCredit = {
@@ -71,7 +79,14 @@ export async function getProviderCredits(): Promise<ProviderCredit[]> {
 
 export function getClientStats() {
   const rows = db.select().from(clients).all();
-  const stats = { total: rows.length, active: 0, expired: 0, disabled: 0, unknown: 0 };
+  const stats = {
+    total: rows.length,
+    active: 0,
+    expired: 0,
+    disabled: 0,
+    pending: 0,
+    unknown: 0,
+  };
   for (const r of rows) {
     stats[effectiveStatus(r.status, r.expireDate)]++;
   }

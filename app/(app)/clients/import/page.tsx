@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { providers } from "@/lib/db/schema";
+import { clients, providers } from "@/lib/db/schema";
 import { getProviderKindMeta } from "@/lib/providers/registry";
 import { NBCard } from "@/components/ui";
 import { getOrder } from "@/lib/queries";
 import { orderPrefill } from "@/lib/orders";
+import { requireSession, isAdmin } from "@/lib/auth/guard";
 import { ImportForm, type ImportProviderOption } from "./ImportForm";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,8 @@ export default async function ImportPage({
 }: {
   searchParams: Promise<{ orderId?: string }>;
 }) {
+  const session = await requireSession();
+  const admin = isAdmin(session);
   const { orderId } = await searchParams;
   const order = orderId ? getOrder(Number(orderId)) : undefined;
   const prefill = order ? orderPrefill(order) : undefined;
@@ -23,15 +26,28 @@ export default async function ImportPage({
     name: p.name,
     supportedTypes: getProviderKindMeta(p.kind)?.supportedTypes ?? ["m3u"],
   }));
+  const planOptions = Array.from(
+    new Set(
+      db
+        .select({ plan: clients.plan })
+        .from(clients)
+        .all()
+        .map((r) => r.plan)
+        .filter(Boolean) as string[],
+    ),
+  ).sort();
 
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">📥 Import existing client</h1>
+          <h1 className="text-3xl font-bold">
+            {admin ? "📥 Add / import client" : "➕ Add customer"}
+          </h1>
           <p className="text-sm text-ink/70">
-            Add a line you already sold. This <strong>does not</strong> spend
-            credits — it just starts tracking it.
+            {admin
+              ? "Record an existing line (with its credentials) or capture a customer."
+              : "Capture a customer + their plan. No credits spent — admin will set up the line."}
           </p>
         </div>
         <Link href="/clients" className="nb-btn">
@@ -56,7 +72,12 @@ export default async function ImportPage({
           </Link>
         </NBCard>
       ) : (
-        <ImportForm providers={options} prefill={prefill} />
+        <ImportForm
+          providers={options}
+          prefill={prefill}
+          isAdmin={admin}
+          planOptions={planOptions}
+        />
       )}
     </div>
   );

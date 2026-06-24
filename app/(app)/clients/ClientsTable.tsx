@@ -22,7 +22,7 @@ export type ClientRow = {
   mac: string | null;
   expireDate: string | null;
   days: number | null;
-  status: "active" | "expired" | "disabled" | "unknown";
+  status: "active" | "expired" | "disabled" | "pending" | "unknown";
   source: string;
   note: string | null;
   plan: string | null;
@@ -45,13 +45,16 @@ export type MsgTemplate = {
   body: string;
 };
 
-const STATUS_COLOR: Record<ClientRow["status"], "lime" | "red" | "yellow" | "white"> =
-  {
-    active: "lime",
-    expired: "red",
-    disabled: "red",
-    unknown: "yellow",
-  };
+const STATUS_COLOR: Record<
+  ClientRow["status"],
+  "lime" | "red" | "yellow" | "white" | "blue"
+> = {
+  active: "lime",
+  expired: "red",
+  disabled: "red",
+  pending: "blue",
+  unknown: "yellow",
+};
 
 export function ClientsTable({
   rows,
@@ -153,6 +156,7 @@ export function ClientsTable({
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="all">All statuses</option>
+            <option value="pending">🔧 Pending setup</option>
             <option value="active">Active</option>
             <option value="exp7">⏳ Expiring ≤ 7 days</option>
             <option value="exp30">⏳ Expiring ≤ 30 days</option>
@@ -434,6 +438,44 @@ function ClientCard({
                   </option>
                 ))}
               </NBSelect>
+            </div>
+          )}
+          {isAdmin && (
+            <div className="rounded-lg border-2 border-ink bg-white p-3">
+              <p className="mb-2 text-sm font-bold">
+                🔑 Line setup {row.status === "pending" && "(pending)"}
+              </p>
+              {row.type === "mag" ? (
+                <NBInput name="mac" defaultValue={row.mac ?? ""} placeholder="MAC address" />
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <NBInput name="username" defaultValue={row.username ?? ""} placeholder="username" />
+                  <NBInput name="password" type="text" placeholder="password (blank = keep)" />
+                </div>
+              )}
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div>
+                  <NBLabel>Expiry</NBLabel>
+                  <NBInput name="expireDate" type="date" defaultValue={row.expireDate ?? ""} />
+                </div>
+                <div>
+                  <NBLabel>Status</NBLabel>
+                  <NBSelect
+                    name="status"
+                    defaultValue={
+                      row.status === "pending"
+                        ? "pending"
+                        : row.status === "disabled"
+                          ? "disabled"
+                          : "active"
+                    }
+                  >
+                    <option value="pending">pending</option>
+                    <option value="active">active</option>
+                    <option value="disabled">disabled</option>
+                  </NBSelect>
+                </div>
+              </div>
             </div>
           )}
           <div className="flex gap-2">
