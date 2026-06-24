@@ -6,7 +6,8 @@ import { getProviderKindMeta } from "@/lib/providers/registry";
 import { daysUntil, effectiveStatus } from "@/lib/queries";
 import { buildClientVars } from "@/lib/messages/render";
 import { listTemplates } from "@/lib/messages/store";
-import { smtpConfigured, getCustomDomains } from "@/lib/settings";
+import { smtpConfigured } from "@/lib/settings";
+import { parseHosts } from "@/lib/messages/clientRender";
 import { requireSession, isAdmin } from "@/lib/auth/guard";
 import { ClientsTable, type ClientRow } from "./ClientsTable";
 import { NBCard } from "@/components/ui";
@@ -42,6 +43,7 @@ export default async function ClientsPage() {
     .map((c) => {
       const prov = provMap.get(c.providerId);
       const meta = prov ? getProviderKindMeta(prov.kind) : undefined;
+      const hostOptions = parseHosts(prov?.host);
       const subs = meta?.subOptions[c.type as "m3u" | "mag" | "protocol"] ?? [
         1, 3, 6, 12,
       ];
@@ -67,7 +69,8 @@ export default async function ClientsPage() {
         customerPhone: c.customerPhone,
         lastSyncedAt: c.lastSyncedAt,
         renewSubs: subs.filter((s) => s !== 99),
-        vars: buildClientVars(c, prov?.host),
+        hostOptions,
+        vars: buildClientVars(c, hostOptions[0]),
       };
     });
 
@@ -110,7 +113,6 @@ export default async function ClientsPage() {
           emailReady={emailReady}
           isAdmin={admin}
           agents={agents}
-          customDomains={getCustomDomains()}
         />
       )}
     </div>

@@ -53,7 +53,6 @@ export function SettingsForm({
   cronSecretSet,
   smtp,
   business,
-  customDomains,
   ordersSecretSet,
   points,
 }: {
@@ -64,7 +63,6 @@ export function SettingsForm({
   cronSecretSet: boolean;
   smtp: SmtpProps;
   business: BusinessProps;
-  customDomains: string;
   ordersSecretSet: boolean;
   points: { onboard: number; outreach: number; retention: number };
 }) {
@@ -289,21 +287,6 @@ export function SettingsForm({
               defaultValue={business.payment_details}
               placeholder="PayPal / bank / crypto…"
             />
-          </div>
-          <div>
-            <NBLabel>Custom host domains</NBLabel>
-            <textarea
-              name="customDomains"
-              defaultValue={customDomains}
-              rows={2}
-              placeholder="letsdream8k.store&#10;mydomain.com:8080"
-              className="w-full rounded-lg border-[3px] border-ink bg-white px-3 py-2 font-medium outline-none focus:shadow-[4px_4px_0_0_#131313]"
-            />
-            <p className="mt-1 text-xs text-ink/60">
-              One per line. Used as a “host” option for M3U / Xtream links (Default
-              = the provider’s host). Add a port if needed, e.g.{" "}
-              <code>domain.com:8080</code>.
-            </p>
           </div>
           <Flash msg={bizMsg} />
           <NBButton type="submit" color="lime" disabled={bizPending}>

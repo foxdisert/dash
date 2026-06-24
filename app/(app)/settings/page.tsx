@@ -49,7 +49,6 @@ export default async function SettingsPage() {
           passSet: Boolean(getSetting(SETTING_KEYS.smtpPass)),
         }}
         business={biz}
-        customDomains={getSetting(SETTING_KEYS.customDomains) ?? ""}
         ordersSecretSet={ordersSecretSet}
         points={getPointValues()}
       />

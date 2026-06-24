@@ -154,11 +154,17 @@ function AddProviderForm({ kinds }: { kinds: ProviderKindMeta[] }) {
           />
         </div>
         <div>
-          <NBLabel>M3U / Xtream host domain (optional)</NBLabel>
-          <NBInput name="host" placeholder="e.g. letsdream8k.store" />
+          <NBLabel>M3U / Xtream host domain(s)</NBLabel>
+          <textarea
+            name="host"
+            rows={2}
+            placeholder="letsdream8k.store&#10;alt-domain.com:8080"
+            className="w-full rounded-lg border-[3px] border-ink bg-white px-3 py-2 font-medium outline-none focus:shadow-[4px_4px_0_0_#131313]"
+          />
           <p className="mt-1 text-xs text-ink/60">
-            The domain used in clients’ M3U/Xtream links. Needed for panels (like
-            Dino) that return links without a host.
+            Host(s) used in this provider’s M3U/Xtream links — one per line, the
+            first is the default. Needed for panels (like Dino) that return links
+            without a host.
           </p>
         </div>
 
@@ -245,11 +251,13 @@ function ProviderRow({ row, kinds }: { row: Row; kinds: ProviderKindMeta[] }) {
           <NBInput name="name" defaultValue={row.name} />
           <NBLabel>Base URL</NBLabel>
           <NBInput name="baseUrl" defaultValue={row.baseUrl} />
-          <NBLabel>M3U / Xtream host domain</NBLabel>
-          <NBInput
+          <NBLabel>M3U / Xtream host domain(s) — one per line</NBLabel>
+          <textarea
             name="host"
             defaultValue={row.host}
-            placeholder="e.g. letsdream8k.store"
+            rows={2}
+            placeholder="letsdream8k.store"
+            className="w-full rounded-lg border-[3px] border-ink bg-white px-3 py-2 font-medium outline-none focus:shadow-[4px_4px_0_0_#131313]"
           />
           <NBLabel>API key</NBLabel>
           <NBInput

@@ -11,6 +11,7 @@ import {
 } from "@/lib/providers/registry";
 import { clientForId } from "@/lib/providers";
 import { ensureAdmin } from "@/lib/auth/guard";
+import { parseHosts } from "@/lib/messages/clientRender";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -28,7 +29,7 @@ export async function createProvider(
   const kind = String(formData.get("kind") ?? "").trim();
   const apiKey = String(formData.get("apiKey") ?? "").trim();
   let baseUrl = String(formData.get("baseUrl") ?? "").trim();
-  const host = cleanHost(String(formData.get("host") ?? ""));
+  const host = parseHosts(String(formData.get("host") ?? "")).join("\n") || null;
 
   const meta = getProviderKindMeta(kind);
   if (!meta) return { ok: false, message: "Unknown provider type." };
@@ -54,7 +55,7 @@ export async function updateProvider(
   const name = String(formData.get("name") ?? "").trim();
   const baseUrl = String(formData.get("baseUrl") ?? "").trim();
   const apiKey = String(formData.get("apiKey") ?? "").trim();
-  const host = cleanHost(String(formData.get("host") ?? ""));
+  const host = parseHosts(String(formData.get("host") ?? "")).join("\n") || null;
   const enabled = formData.get("enabled") != null;
 
   if (!id) return { ok: false, message: "Missing provider id." };
@@ -117,10 +118,4 @@ export async function testProvider(id: number): Promise<ActionResult> {
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : "Request failed.";
-}
-
-/** Normalises a host domain ("https://x.com/" → "x.com"); empty → null. */
-function cleanHost(v: string): string | null {
-  const h = v.trim().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-  return h || null;
 }

@@ -5,6 +5,14 @@ export function applyVars(text: string, vars: Record<string, string>): string {
   );
 }
 
+/** Parses a multi-line/comma host list into clean host domains (no scheme/trailing slash). */
+export function parseHosts(raw: string | null | undefined): string[] {
+  return (raw ?? "")
+    .split(/[\n,]+/)
+    .map((h) => h.trim().replace(/^https?:\/\//, "").replace(/\/+$/, ""))
+    .filter(Boolean);
+}
+
 /** Replaces the host[:port] of a URL (m3u link or xtream server) with newHost. */
 export function swapHost(value: string, newHost: string): string {
   if (!value || !newHost) return value;

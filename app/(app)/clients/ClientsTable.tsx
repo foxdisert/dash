@@ -34,6 +34,7 @@ export type ClientRow = {
   customerPhone: string | null;
   lastSyncedAt: string | null;
   renewSubs: number[];
+  hostOptions: string[];
   vars: Record<string, string>;
 };
 
@@ -63,7 +64,6 @@ export function ClientsTable({
   emailReady,
   isAdmin,
   agents,
-  customDomains,
 }: {
   rows: ClientRow[];
   providers: { id: number; name: string }[];
@@ -71,7 +71,6 @@ export function ClientsTable({
   emailReady: boolean;
   isAdmin: boolean;
   agents: { id: number; name: string }[];
-  customDomains: string[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -250,7 +249,6 @@ export function ClientsTable({
             emailReady={emailReady}
             isAdmin={isAdmin}
             agents={agents}
-            customDomains={customDomains}
           />
         ))}
       </div>
@@ -264,17 +262,16 @@ function ClientCard({
   emailReady,
   isAdmin,
   agents,
-  customDomains,
 }: {
   row: ClientRow;
   templates: MsgTemplate[];
   emailReady: boolean;
   isAdmin: boolean;
   agents: { id: number; name: string }[];
-  customDomains: string[];
 }) {
   const router = useRouter();
   const toast = useToast();
+  const hostOptions = row.hostOptions;
   const [busy, setBusy] = useState(false);
   const [renewOpen, setRenewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -547,7 +544,7 @@ function ClientCard({
             <div className="mt-3 space-y-2 rounded-lg border-2 border-dashed border-ink p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-bold">📺 Connection details</p>
-                {customDomains.length > 0 && (
+                {hostOptions.length > 1 && (
                   <div className="flex items-center gap-1 text-xs">
                     <span className="font-bold">Host:</span>
                     <NBSelect
@@ -555,10 +552,10 @@ function ClientCard({
                       onChange={(e) => setDetailsHost(e.target.value)}
                       className="w-auto py-1"
                     >
-                      <option value="">Default</option>
-                      {customDomains.map((d) => (
-                        <option key={d} value={d}>
+                      {hostOptions.map((d, i) => (
+                        <option key={d} value={i === 0 ? "" : d}>
                           {d}
+                          {i === 0 ? " (default)" : ""}
                         </option>
                       ))}
                     </NBSelect>
@@ -588,12 +585,7 @@ function ClientCard({
         })()}
 
       {msgOpen && (
-        <MessagePanel
-          row={row}
-          templates={templates}
-          emailReady={emailReady}
-          customDomains={customDomains}
-        />
+        <MessagePanel row={row} templates={templates} emailReady={emailReady} />
       )}
     </NBCard>
   );
@@ -634,14 +626,13 @@ function MessagePanel({
   row,
   templates,
   emailReady,
-  customDomains,
 }: {
   row: ClientRow;
   templates: MsgTemplate[];
   emailReady: boolean;
-  customDomains: string[];
 }) {
   const toast = useToast();
+  const hostOptions = row.hostOptions;
   const [key, setKey] = useState(templates[0]?.key ?? "");
   const [host, setHost] = useState("");
   const [sending, setSending] = useState(false);
@@ -696,17 +687,17 @@ function MessagePanel({
             </option>
           ))}
         </NBSelect>
-        {customDomains.length > 0 && (
+        {hostOptions.length > 1 && (
           <NBSelect
             value={host}
             onChange={(e) => setHost(e.target.value)}
             className="w-auto"
             title="Host for the M3U / Xtream links"
           >
-            <option value="">Host: Default</option>
-            {customDomains.map((d) => (
-              <option key={d} value={d}>
+            {hostOptions.map((d, i) => (
+              <option key={d} value={i === 0 ? "" : d}>
                 Host: {d}
+                {i === 0 ? " (default)" : ""}
               </option>
             ))}
           </NBSelect>
