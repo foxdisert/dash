@@ -105,7 +105,7 @@ export default async function DashboardPage() {
                   className="flex items-center justify-between rounded-lg border-2 border-ink px-3 py-2"
                 >
                   <span className="truncate font-bold">
-                    {c.username ?? c.mac}
+                    {c.customerName ?? c.username ?? c.mac ?? "Client"}
                   </span>
                   <NBBadge color={c.days! <= 2 ? "red" : "yellow"}>
                     {c.days === 0 ? "today" : `${c.days}d`}
