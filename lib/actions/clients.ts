@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { activityLog, clients } from "@/lib/db/schema";
+import { activityLog, clients, providers } from "@/lib/db/schema";
 import { clientForId } from "@/lib/providers";
 import type { ClientType, DeviceLookupParams } from "@/lib/providers/types";
 import { ensureAdmin } from "@/lib/auth/guard";
@@ -37,7 +37,7 @@ export async function importClient(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  const providerId = Number(formData.get("providerId"));
+  let providerId = Number(formData.get("providerId")) || 0;
   const type = String(formData.get("type") ?? "m3u") as ClientType;
   const username = str(formData.get("username"));
   const password = str(formData.get("password"));
@@ -50,6 +50,11 @@ export async function importClient(
   const plan = str(formData.get("plan")) ?? null;
   const orderDate = str(formData.get("orderDate")) ?? null;
 
+  // Route the provider from the plan: Basic → Dino, Premium → Strong 8K.
+  const routed = routeProviderIdByPlan(plan);
+  if (routed) providerId = routed;
+  if (!providerId) providerId = firstProviderId() ?? 0;
+
   // Active line with a known plan but no expiry typed → auto-calc from the plan.
   const planDays = planToDays(plan);
   if (!expireDate && (username || mac) && planDays) {
@@ -60,7 +65,7 @@ export async function importClient(
   // (e.g. an agent who can't create panel lines). Admin provisions later.
   const isPending = !username && !mac;
 
-  if (!providerId) return { ok: false, message: "Pick a provider." };
+  if (!providerId) return { ok: false, message: "No provider configured." };
   if (isPending) {
     if (!contact.customerName && !contact.customerEmail)
       return { ok: false, message: "Add at least a customer name or email." };
@@ -423,6 +428,26 @@ function computeExpiry(subMonths: number): string {
  * Parses a plan label into a number of days.
  * 24H/1 day → 1, "X day(s)" → X, "X month(s)" → X*30, "X year"/annual → X*365.
  */
+/**
+ * Routes a plan to a provider by keyword: "premium" → Strong 8K (strong8k),
+ * "basic" → Dino (tvpluspanel). Returns the provider id, or null if no match.
+ */
+function routeProviderIdByPlan(plan: string | null | undefined): number | null {
+  if (!plan) return null;
+  const p = plan.toLowerCase();
+  let kind: string | null = null;
+  if (p.includes("premium")) kind = "strong8k";
+  else if (p.includes("basic")) kind = "tvpluspanel";
+  if (!kind) return null;
+  const row = db.select().from(providers).where(eq(providers.kind, kind)).get();
+  return row?.id ?? null;
+}
+
+function firstProviderId(): number | null {
+  const row = db.select().from(providers).orderBy(providers.id).get();
+  return row?.id ?? null;
+}
+
 function planToDays(plan: string | null | undefined): number | null {
   if (!plan) return null;
   const p = plan.toLowerCase();

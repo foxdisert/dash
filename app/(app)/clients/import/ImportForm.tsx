@@ -75,7 +75,7 @@ export function ImportForm({
           </>
         )}
 
-        {providers.length > 1 && (
+        {isAdmin && providers.length > 1 && (
           <div className="mb-4">
             <NBLabel>Provider</NBLabel>
             <NBSelect
@@ -94,10 +94,20 @@ export function ImportForm({
                 </option>
               ))}
             </NBSelect>
+            <p className="mt-1 text-xs text-ink/60">
+              A Basic/Premium plan auto-routes the provider (Basic → Dino, Premium
+              → Strong 8K).
+            </p>
           </div>
         )}
-        {providers.length <= 1 && (
+        {isAdmin && providers.length <= 1 && (
           <input type="hidden" name="providerId" value={providerId} />
+        )}
+        {!isAdmin && (
+          <p className="mb-4 rounded-md border-2 border-ink bg-white px-3 py-2 text-xs font-bold">
+            📦 The provider is chosen automatically from the plan — Basic → Dino,
+            Premium → Strong 8K.
+          </p>
         )}
 
         {/* Plan (both roles) */}
