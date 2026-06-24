@@ -1,0 +1,35 @@
+name: Deploy to VPS
+
+# Auto-deploys on every push to main. Configure these GitHub repo secrets first
+# (Settings → Secrets and variables → Actions):
+#   VPS_HOST        e.g. 75.119.136.96   (or dash.morsar.com)
+#   VPS_USER        a deploy user (recommended: NOT root)
+#   VPS_SSH_KEY     the PRIVATE SSH key whose public key is in the VPS user's authorized_keys
+#   VPS_APP_DIR     e.g. /var/www/morsardash
+#   VPS_PORT        (optional) SSH port, defaults to 22
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            cd "${{ secrets.VPS_APP_DIR }}"
+            git pull origin main
+            npm ci
+            npm run db:migrate
+            npm run build
+            pm2 restart morsardash || pm2 start "npm run start" --name morsardash
+            pm2 save
