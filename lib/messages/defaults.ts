@@ -76,6 +76,30 @@ Thanks for testing with us!
 {{from_name}} — {{business_name}}`,
   },
   {
+    key: "subscription_details",
+    name: "Subscription / login details",
+    channel: "both",
+    subject: "📺 Your {{business_name}} login details",
+    body: `Hi {{name}},
+
+Your subscription is ready! 🎉 Here are your details:
+
+▶️ M3U / Smart TV link:
+{{m3u_url}}
+
+🔐 Xtream Codes login (for apps like IPTV Smarters / TiviMate):
+• Server URL: {{xtream_server}}
+• Username: {{username}}
+• Password: {{password}}
+
+Plan: {{plan}} · Expires: {{expiry_date}}
+
+Need help installing? {{installation_url}} — or WhatsApp {{whatsapp_number}}.
+
+Enjoy!
+{{from_name}} — {{business_name}}`,
+  },
+  {
     key: "payment_details",
     name: "Payment / renewal details",
     channel: "both",

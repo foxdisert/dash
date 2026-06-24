@@ -274,7 +274,12 @@ function ClientCard({
   const [renewOpen, setRenewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [renewSub, setRenewSub] = useState(row.renewSubs[0] ?? 1);
+
+  const m3uUrl = row.vars.m3u_url || "";
+  const xtreamServer = row.vars.xtream_server || "";
+  const hasConnection = Boolean(m3uUrl || xtreamServer);
 
   const hasContact =
     row.customerName || row.customerEmail || row.customerPhone;
@@ -377,6 +382,11 @@ function ClientCard({
           {isAdmin && (
             <NBButton color="yellow" onClick={() => setRenewOpen((v) => !v)}>
               🔄 Renew
+            </NBButton>
+          )}
+          {hasConnection && (
+            <NBButton color="blue" onClick={() => setDetailsOpen((v) => !v)}>
+              📺 Details
             </NBButton>
           )}
           <NBButton color="pink" onClick={() => setMsgOpen((v) => !v)}>
@@ -521,10 +531,65 @@ function ClientCard({
         </div>
       )}
 
+      {detailsOpen && (
+        <div className="mt-3 space-y-2 rounded-lg border-2 border-dashed border-ink p-3">
+          <p className="text-sm font-bold">📺 Connection details</p>
+          {m3uUrl && (
+            <CopyRow label="M3U / Smart TV link" value={m3uUrl} onCopied={toast.success} />
+          )}
+          {xtreamServer && (
+            <>
+              <CopyRow label="Xtream server URL" value={xtreamServer} onCopied={toast.success} />
+              {row.username && (
+                <CopyRow label="Username" value={row.username} onCopied={toast.success} />
+              )}
+              {row.vars.password && (
+                <CopyRow label="Password" value={row.vars.password} onCopied={toast.success} />
+              )}
+            </>
+          )}
+          <p className="text-xs text-ink/60">
+            Use <strong>✉️ Message → Subscription / login details</strong> to send
+            these to the customer.
+          </p>
+        </div>
+      )}
+
       {msgOpen && (
         <MessagePanel row={row} templates={templates} emailReady={emailReady} />
       )}
     </NBCard>
+  );
+}
+
+function CopyRow({
+  label,
+  value,
+  onCopied,
+}: {
+  label: string;
+  value: string;
+  onCopied: (m: string) => void;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-bold text-ink/60">{label}</p>
+      <div className="flex items-center gap-2">
+        <code className="min-w-0 flex-1 truncate rounded border-2 border-ink bg-paper px-2 py-1 text-xs">
+          {value}
+        </code>
+        <button
+          type="button"
+          onClick={async () => {
+            await navigator.clipboard.writeText(value);
+            onCopied(`${label} copied.`);
+          }}
+          className="nb-btn bg-white px-2 py-1 text-xs"
+        >
+          📋
+        </button>
+      </div>
+    </div>
   );
 }
 

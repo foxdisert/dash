@@ -1,18 +1,18 @@
 import "server-only";
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { messageTemplates, type MessageTemplate } from "@/lib/db/schema";
 import { DEFAULT_TEMPLATES } from "./defaults";
 
-/** Inserts default templates if the table is empty (safety net for first run). */
+/** Inserts any default templates that are missing (covers first run + new builtins). */
 export function seedTemplatesIfEmpty(): void {
-  const count = db
-    .select({ n: sql<number>`count(*)` })
-    .from(messageTemplates)
-    .get();
-  if (count && count.n > 0) return;
+  const existing = new Set(
+    db.select({ key: messageTemplates.key }).from(messageTemplates).all().map((r) => r.key),
+  );
+  const missing = DEFAULT_TEMPLATES.filter((t) => !existing.has(t.key));
+  if (missing.length === 0) return;
   db.insert(messageTemplates)
-    .values(DEFAULT_TEMPLATES.map((t) => ({ ...t, builtin: true })))
+    .values(missing.map((t) => ({ ...t, builtin: true })))
     .run();
 }
 

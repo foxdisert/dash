@@ -132,9 +132,9 @@ function TemplateEditor({
           </p>
         </div>
         <p className="mt-3 text-xs text-ink/60">
-          Variables: name, username, expiry_date, days_left, expiry_phrase, plan,
-          business_name, from_name, whatsapp_number, installation_url,
-          downloader_code, payment_details.
+          Variables: name, username, password, expiry_date, days_left,
+          expiry_phrase, plan, m3u_url, xtream_server, business_name, from_name,
+          whatsapp_number, installation_url, downloader_code, payment_details.
         </p>
       </NBCard>
     </div>
