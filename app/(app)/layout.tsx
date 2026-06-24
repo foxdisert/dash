@@ -11,7 +11,7 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const session = await requireSession();
-  const notifications = getExpiringNotifications();
+  const notifications = getExpiringNotifications(7);
   const newOrders = session.role === "admin" ? getNewOrderCount() : 0;
 
   return (

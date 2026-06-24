@@ -111,13 +111,15 @@ export function getExpiringNotifications(
       const days = daysUntil(c.expireDate);
       return {
         id: c.id,
-        label: c.username ?? c.mac ?? "—",
+        label: c.customerName ?? c.username ?? c.mac ?? "Client",
         providerName: provMap.get(c.providerId) ?? "—",
         expireDate: c.expireDate,
         days: days ?? 0,
         expired: days != null && days < 0,
         _keep:
           days != null &&
+          // upcoming only: today through the window (no already-expired clutter)
+          days >= 0 &&
           days <= withinDays &&
           // ignore lines we already know are disabled (no point alerting)
           effectiveStatus(c.status, c.expireDate) !== "disabled",

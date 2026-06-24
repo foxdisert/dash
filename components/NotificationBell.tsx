@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { NBBadge } from "@/components/ui";
 import { renewClient, syncClient } from "@/lib/actions/clients";
+import { useToast } from "@/components/Toast";
 import type { ExpiringNotification } from "@/lib/queries";
+
+const STORE_KEY = "morsar_dismissed_notifs";
+const keyOf = (it: ExpiringNotification) => `${it.id}:${it.expireDate ?? ""}`;
 
 export function NotificationBell({
   items,
@@ -16,12 +20,46 @@ export function NotificationBell({
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const toast = useToast();
   const [busyId, setBusyId] = useState<number | null>(null);
-  const count = items.length;
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+  // Load dismissed keys from localStorage after mount (avoids hydration mismatch).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) setDismissed(new Set(JSON.parse(raw) as string[]));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const visible = useMemo(
+    () => items.filter((it) => !dismissed.has(keyOf(it))),
+    [items, dismissed],
+  );
+  const count = visible.length;
+
+  function persist(next: Set<string>) {
+    setDismissed(next);
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify([...next]));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function clearAll() {
+    const next = new Set(dismissed);
+    visible.forEach((it) => next.add(keyOf(it)));
+    persist(next);
+    setOpen(false);
+  }
 
   async function onSync(id: number) {
     setBusyId(id);
-    await syncClient(id);
+    const res = await syncClient(id);
+    toast.result(res);
     setBusyId(null);
     router.refresh();
   }
@@ -29,7 +67,8 @@ export function NotificationBell({
   async function onRenew(id: number, label: string) {
     if (!confirm(`Renew “${label}” for 1 month? This spends credits.`)) return;
     setBusyId(id);
-    await renewClient(id, 1);
+    const res = await renewClient(id, 1);
+    toast.result(res);
     setBusyId(null);
     router.refresh();
   }
@@ -54,16 +93,18 @@ export function NotificationBell({
         <>
           {/* click-away */}
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 z-20 mt-2 w-80 max-w-[90vw] rounded-xl border-[3px] border-ink bg-white p-3 shadow-[6px_6px_0_0_#131313] md:left-auto md:right-0">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="font-bold">⏳ Expiring soon</p>
-              <Link
-                href="/clients?filter=expiring"
-                onClick={() => setOpen(false)}
-                className="text-xs font-bold underline"
-              >
-                View all
-              </Link>
+          <div className="absolute left-0 z-20 mt-2 w-72 max-w-[90vw] rounded-xl border-[3px] border-ink bg-white p-3 shadow-[6px_6px_0_0_#131313] md:left-auto md:right-0">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="font-bold">⏳ Expiring in 7 days</p>
+              {count > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="text-xs font-bold underline"
+                >
+                  Clear all
+                </button>
+              )}
             </div>
 
             {count === 0 ? (
@@ -72,25 +113,14 @@ export function NotificationBell({
               </p>
             ) : (
               <ul className="max-h-96 space-y-2 overflow-auto">
-                {items.map((it) => (
-                  <li
-                    key={it.id}
-                    className="rounded-lg border-2 border-ink p-2"
-                  >
+                {visible.map((it) => (
+                  <li key={it.id} className="rounded-lg border-2 border-ink p-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate font-bold">{it.label}</span>
-                      <NBBadge color={it.expired || it.days <= 1 ? "red" : "yellow"}>
-                        {it.expired
-                          ? "expired"
-                          : it.days === 0
-                            ? "today"
-                            : `${it.days}d`}
+                      <NBBadge color={it.days <= 1 ? "red" : "yellow"}>
+                        {it.days === 0 ? "today" : `${it.days}d`}
                       </NBBadge>
                     </div>
-                    <p className="text-xs text-ink/60">
-                      {it.providerName}
-                      {it.expireDate && ` · ${it.expireDate}`}
-                    </p>
                     <div className="mt-2 flex gap-2">
                       <button
                         type="button"
@@ -115,6 +145,14 @@ export function NotificationBell({
                 ))}
               </ul>
             )}
+
+            <Link
+              href="/clients?filter=expiring"
+              onClick={() => setOpen(false)}
+              className="mt-3 block text-center text-xs font-bold underline"
+            >
+              View all in Clients →
+            </Link>
           </div>
         </>
       )}
