@@ -1,6 +1,7 @@
 import "server-only";
 import type { IptvProvider, ProviderConfig, ProviderKindMeta } from "./types";
 import { TVPLUSPANEL_META, TvPlusPanelProvider } from "./tvpluspanel";
+import { STRONG8K_META, Strong8kProvider } from "./strong8k";
 
 type Factory = (config: ProviderConfig) => IptvProvider;
 
@@ -19,6 +20,10 @@ const REGISTRY: Record<string, RegistryEntry> = {
   [TVPLUSPANEL_META.kind]: {
     meta: TVPLUSPANEL_META,
     factory: (config) => new TvPlusPanelProvider(config),
+  },
+  [STRONG8K_META.kind]: {
+    meta: STRONG8K_META,
+    factory: (config) => new Strong8kProvider(config),
   },
 };
 
