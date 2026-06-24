@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { NBBadge, NBButton, NBCard, NBInput } from "@/components/ui";
 import { refreshBouquets } from "@/lib/actions/bouquets";
+import { useToast } from "@/components/Toast";
 
 type ProviderBouquets = {
   id: number;
@@ -40,6 +41,7 @@ export function BouquetsClient({
 
 function ProviderBouquetCard({ provider }: { provider: ProviderBouquets }) {
   const router = useRouter();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -49,6 +51,7 @@ function ProviderBouquetCard({ provider }: { provider: ProviderBouquets }) {
     setMsg(null);
     const res = await refreshBouquets(provider.id);
     setMsg(res.message);
+    toast.result(res);
     setBusy(false);
     if (res.ok) router.refresh();
   }

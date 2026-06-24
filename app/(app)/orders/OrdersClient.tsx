@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { NBBadge, NBButton, NBCard, NBSelect } from "@/components/ui";
 import { setOrderStatus } from "@/lib/actions/orders";
+import { useToast } from "@/components/Toast";
 
 export type OrderRow = {
   id: number;
@@ -90,11 +91,13 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 function OrderCard({ order }: { order: OrderRow }) {
   const router = useRouter();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
 
   async function ignore(status: "ignored" | "new") {
     setBusy(true);
-    await setOrderStatus(order.id, status);
+    const res = await setOrderStatus(order.id, status);
+    toast.result(res);
     setBusy(false);
     router.refresh();
   }

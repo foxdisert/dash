@@ -10,6 +10,7 @@ import {
   sendTestEmail,
   sendTestTelegram,
 } from "@/lib/actions/settings";
+import { useToast } from "@/components/Toast";
 
 type SmtpProps = {
   host: string;
@@ -63,6 +64,7 @@ export function SettingsForm({
   ordersSecretSet: boolean;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [msg, setMsg] = useState<{ ok: boolean; message: string } | null>(null);
   const [testMsg, setTestMsg] = useState<{ ok: boolean; message: string } | null>(
     null,
@@ -83,13 +85,16 @@ export function SettingsForm({
     start(async () => {
       const res = await saveTelegramSettings(null, formData);
       setMsg(res);
+      toast.result(res);
       if (res.ok) router.refresh();
     });
   }
 
   async function onTest() {
     setTesting(true);
-    setTestMsg(await sendTestTelegram());
+    const res = await sendTestTelegram();
+    setTestMsg(res);
+    toast.result(res);
     setTesting(false);
   }
 
@@ -97,13 +102,16 @@ export function SettingsForm({
     startSmtp(async () => {
       const res = await saveSmtpSettings(null, formData);
       setSmtpMsg(res);
+      toast.result(res);
       if (res.ok) router.refresh();
     });
   }
 
   async function onTestEmail() {
     setEmailTesting(true);
-    setEmailTestMsg(await sendTestEmail(testTo));
+    const res = await sendTestEmail(testTo);
+    setEmailTestMsg(res);
+    toast.result(res);
     setEmailTesting(false);
   }
 
@@ -111,6 +119,7 @@ export function SettingsForm({
     startBiz(async () => {
       const res = await saveBusinessSettings(null, formData);
       setBizMsg(res);
+      toast.result(res);
       if (res.ok) router.refresh();
     });
   }

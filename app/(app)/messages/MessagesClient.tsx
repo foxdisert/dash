@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { NBBadge, NBButton, NBCard, NBInput, NBLabel } from "@/components/ui";
 import { applyVars } from "@/lib/messages/clientRender";
 import { saveTemplate } from "@/lib/actions/messages";
+import { useToast } from "@/components/Toast";
 
 type Template = {
   id: number;
@@ -56,6 +57,7 @@ function TemplateEditor({
   sampleVars: Record<string, string>;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [subject, setSubject] = useState(template.subject);
   const [body, setBody] = useState(template.body);
   const [busy, setBusy] = useState(false);
@@ -65,6 +67,7 @@ function TemplateEditor({
     setBusy(true);
     const res = await saveTemplate(null, formData);
     setMsg(res);
+    toast.result(res);
     setBusy(false);
     if (res.ok) router.refresh();
   }

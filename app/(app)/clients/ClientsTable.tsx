@@ -12,6 +12,7 @@ import {
 } from "@/lib/actions/clients";
 import { sendClientEmail } from "@/lib/actions/messages";
 import { applyVars, waLink } from "@/lib/messages/clientRender";
+import { useToast } from "@/components/Toast";
 
 export type ClientRow = {
   id: number;
@@ -74,8 +75,8 @@ export function ClientsTable({
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [sortBy, setSortBy] = useState("recent");
-  const [flash, setFlash] = useState<string | null>(null);
   const [syncingAll, startSyncAll] = useTransition();
+  const toast = useToast();
 
   // Distinct plans present, for the plan dropdown.
   const planOptions = useMemo(
@@ -127,7 +128,7 @@ export function ClientsTable({
   function onSyncAll() {
     startSyncAll(async () => {
       const res = await syncAll();
-      setFlash(res.message);
+      toast.result(res);
       router.refresh();
     });
   }
@@ -228,7 +229,6 @@ export function ClientsTable({
             </button>
           )}
         </div>
-        {flash && <p className="mt-2 text-sm font-bold">{flash}</p>}
       </NBCard>
 
       <div className="space-y-3">
@@ -236,7 +236,6 @@ export function ClientsTable({
           <ClientCard
             key={r.id}
             row={r}
-            onFlash={setFlash}
             templates={templates}
             emailReady={emailReady}
             isAdmin={isAdmin}
@@ -249,18 +248,17 @@ export function ClientsTable({
 
 function ClientCard({
   row,
-  onFlash,
   templates,
   emailReady,
   isAdmin,
 }: {
   row: ClientRow;
-  onFlash: (m: string) => void;
   templates: MsgTemplate[];
   emailReady: boolean;
   isAdmin: boolean;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [renewOpen, setRenewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -273,7 +271,7 @@ function ClientCard({
   async function onSaveDetails(formData: FormData) {
     setBusy(true);
     const res = await updateClientDetails(null, formData);
-    onFlash(res.message);
+    toast.result(res);
     setBusy(false);
     if (res.ok) setEditOpen(false);
     router.refresh();
@@ -282,7 +280,7 @@ function ClientCard({
   async function run(fn: () => Promise<{ ok: boolean; message: string }>) {
     setBusy(true);
     const res = await fn();
-    onFlash(res.message);
+    toast.result(res);
     setBusy(false);
     router.refresh();
   }
@@ -291,7 +289,12 @@ function ClientCard({
     if (!confirm("Remove this client from the dashboard? (does not touch the panel)"))
       return;
     setBusy(true);
-    await deleteClient(row.id);
+    try {
+      await deleteClient(row.id);
+      toast.success("Client deleted.");
+    } catch {
+      toast.error("Couldn't delete this client.");
+    }
     router.refresh();
   }
 
@@ -453,12 +456,7 @@ function ClientCard({
       )}
 
       {msgOpen && (
-        <MessagePanel
-          row={row}
-          templates={templates}
-          emailReady={emailReady}
-          onFlash={onFlash}
-        />
+        <MessagePanel row={row} templates={templates} emailReady={emailReady} />
       )}
     </NBCard>
   );
@@ -468,13 +466,12 @@ function MessagePanel({
   row,
   templates,
   emailReady,
-  onFlash,
 }: {
   row: ClientRow;
   templates: MsgTemplate[];
   emailReady: boolean;
-  onFlash: (m: string) => void;
 }) {
+  const toast = useToast();
   const [key, setKey] = useState(templates[0]?.key ?? "");
   const [sending, setSending] = useState(false);
   const tpl = templates.find((t) => t.key === key);
@@ -486,13 +483,13 @@ function MessagePanel({
   async function onSendEmail() {
     setSending(true);
     const res = await sendClientEmail(row.id, key);
-    onFlash(res.message);
+    toast.result(res);
     setSending(false);
   }
 
   async function onCopy() {
     await navigator.clipboard.writeText(bodyText);
-    onFlash("Message copied to clipboard.");
+    toast.success("Message copied to clipboard.");
   }
 
   if (templates.length === 0) {

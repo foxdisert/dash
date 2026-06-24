@@ -18,6 +18,7 @@ import {
   testProviderConfig,
   updateProvider,
 } from "@/lib/actions/providers";
+import { useToast } from "@/components/Toast";
 
 type Row = {
   id: number;
@@ -68,6 +69,7 @@ function Flash({ msg }: { msg: { ok: boolean; message: string } | null }) {
 
 function AddProviderForm({ kinds }: { kinds: ProviderKindMeta[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [kind, setKind] = useState(kinds[0]?.kind ?? "");
   const [baseUrl, setBaseUrl] = useState(kinds[0]?.defaultBaseUrl ?? "");
   const [apiKey, setApiKey] = useState("");
@@ -86,7 +88,9 @@ function AddProviderForm({ kinds }: { kinds: ProviderKindMeta[] }) {
 
   async function onTest() {
     setTesting(true);
-    setMsg(await testProviderConfig(kind, baseUrl, apiKey));
+    const res = await testProviderConfig(kind, baseUrl, apiKey);
+    setMsg(res);
+    toast.result(res);
     setTesting(false);
   }
 
@@ -94,6 +98,7 @@ function AddProviderForm({ kinds }: { kinds: ProviderKindMeta[] }) {
     start(async () => {
       const res = await createProvider(null, formData);
       setMsg(res);
+      toast.result(res);
       if (res.ok) {
         setApiKey("");
         setName("");
@@ -176,6 +181,7 @@ function AddProviderForm({ kinds }: { kinds: ProviderKindMeta[] }) {
 
 function ProviderRow({ row, kinds }: { row: Row; kinds: ProviderKindMeta[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -183,7 +189,9 @@ function ProviderRow({ row, kinds }: { row: Row; kinds: ProviderKindMeta[] }) {
 
   async function onTest() {
     setBusy(true);
-    setMsg(await testProvider(row.id));
+    const res = await testProvider(row.id);
+    setMsg(res);
+    toast.result(res);
     setBusy(false);
   }
 
@@ -191,6 +199,7 @@ function ProviderRow({ row, kinds }: { row: Row; kinds: ProviderKindMeta[] }) {
     if (!confirm(`Delete provider “${row.name}” and all its clients?`)) return;
     setBusy(true);
     await deleteProvider(row.id);
+    toast.success(`Deleted “${row.name}”.`);
     router.refresh();
   }
 
@@ -198,6 +207,7 @@ function ProviderRow({ row, kinds }: { row: Row; kinds: ProviderKindMeta[] }) {
     setBusy(true);
     const res = await updateProvider(null, formData);
     setMsg(res);
+    toast.result(res);
     setBusy(false);
     if (res.ok) {
       setEditing(false);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { NBButton, NBCard, NBInput, NBLabel, NBSelect } from "@/components/ui";
 import { CustomerFields } from "@/components/CustomerFields";
 import { importClient } from "@/lib/actions/clients";
+import { useToast } from "@/components/Toast";
 
 type ClientType = "m3u" | "mag" | "protocol";
 
@@ -32,6 +33,7 @@ export function ImportForm({
   prefill?: Prefill;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [providerId, setProviderId] = useState(providers[0].id);
   const provider = providers.find((p) => p.id === providerId)!;
   const [type, setType] = useState<ClientType>(provider.supportedTypes[0]);
@@ -45,6 +47,7 @@ export function ImportForm({
     setResult(null);
     const res = await importClient(null, formData);
     setResult(res);
+    toast.result(res);
     setBusy(false);
     if (res.ok) setTimeout(() => router.push("/clients"), 800);
   }

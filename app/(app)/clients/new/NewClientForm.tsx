@@ -12,6 +12,7 @@ import {
 } from "@/components/ui";
 import { CustomerFields } from "@/components/CustomerFields";
 import { createClient } from "@/lib/actions/clients";
+import { useToast } from "@/components/Toast";
 
 type ClientType = "m3u" | "mag" | "protocol";
 
@@ -46,6 +47,7 @@ export function NewClientForm({
   prefill?: Prefill;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [providerId, setProviderId] = useState(providers[0].id);
   const provider = providers.find((p) => p.id === providerId)!;
 
@@ -109,6 +111,7 @@ export function NewClientForm({
 
     const res = await createClient(null, formData);
     setResult(res);
+    toast.result(res);
     setBusy(false);
     if (res.ok) {
       setTimeout(() => router.push("/clients"), 900);

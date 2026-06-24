@@ -11,6 +11,7 @@ import {
   NBSelect,
 } from "@/components/ui";
 import { createUser, deleteUser, resetPassword } from "@/lib/actions/users";
+import { useToast } from "@/components/Toast";
 
 type Row = {
   id: number;
@@ -55,6 +56,7 @@ export function UsersClient({
 
 function AddUserForm() {
   const router = useRouter();
+  const toast = useToast();
   const [msg, setMsg] = useState<{ ok: boolean; message: string } | null>(null);
   const [pending, start] = useTransition();
 
@@ -62,6 +64,7 @@ function AddUserForm() {
     start(async () => {
       const res = await createUser(null, formData);
       setMsg(res);
+      toast.result(res);
       if (res.ok) {
         (document.getElementById("add-user-form") as HTMLFormElement)?.reset();
         router.refresh();
@@ -108,6 +111,7 @@ function AddUserForm() {
 
 function UserRow({ row, isSelf }: { row: Row; isSelf: boolean }) {
   const router = useRouter();
+  const toast = useToast();
   const [msg, setMsg] = useState<{ ok: boolean; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
@@ -118,6 +122,7 @@ function UserRow({ row, isSelf }: { row: Row; isSelf: boolean }) {
     setBusy(true);
     const res = await deleteUser(row.id);
     setMsg(res);
+    toast.result(res);
     setBusy(false);
     if (res.ok) router.refresh();
   }
@@ -126,6 +131,7 @@ function UserRow({ row, isSelf }: { row: Row; isSelf: boolean }) {
     setBusy(true);
     const res = await resetPassword(row.id, pw);
     setMsg(res);
+    toast.result(res);
     setBusy(false);
     if (res.ok) {
       setResetOpen(false);
