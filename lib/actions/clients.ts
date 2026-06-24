@@ -42,13 +42,19 @@ export async function importClient(
   const username = str(formData.get("username"));
   const password = str(formData.get("password"));
   const mac = str(formData.get("mac"));
-  const expireDate = str(formData.get("expireDate"));
+  let expireDate = str(formData.get("expireDate"));
   const packageIds = str(formData.get("packageIds"));
   const note = str(formData.get("note"));
   const contact = readContact(formData);
   const orderId = Number(formData.get("orderId")) || null;
   const plan = str(formData.get("plan")) ?? null;
   const orderDate = str(formData.get("orderDate")) ?? null;
+
+  // Active line with a known plan but no expiry typed → auto-calc from the plan.
+  const planDays = planToDays(plan);
+  if (!expireDate && (username || mac) && planDays) {
+    expireDate = addDays(planDays);
+  }
 
   // "Pending setup" = a customer captured without line credentials yet
   // (e.g. an agent who can't create panel lines). Admin provisions later.
@@ -350,6 +356,13 @@ export async function updateClientDetails(
     if (ex) adminFields.expireDate = ex;
     const st = str(formData.get("status"));
     if (st) adminFields.status = st;
+
+    // Activating a line with a plan but no expiry yet → auto-calc from the plan.
+    if (adminFields.status === "active" && !adminFields.expireDate) {
+      const cur = db.select().from(clients).where(eq(clients.id, id)).get();
+      const days = planToDays(cur?.plan);
+      if (cur && !cur.expireDate && days) adminFields.expireDate = addDays(days);
+    }
   }
   try {
     db.update(clients)
@@ -394,9 +407,32 @@ function now(): string {
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
-function computeExpiry(subMonths: number): string {
+/** Today + N days as YYYY-MM-DD. */
+function addDays(days: number): string {
   const d = new Date();
-  if (subMonths === 99) d.setDate(d.getDate() + 1); // demo ≈ 1 day
-  else d.setMonth(d.getMonth() + subMonths);
+  d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+/** Subscription length (months) → expiry from today. 1 month = 30 days, 99 = 1-day demo. */
+function computeExpiry(subMonths: number): string {
+  return addDays(subMonths === 99 ? 1 : subMonths * 30);
+}
+
+/**
+ * Parses a plan label into a number of days.
+ * 24H/1 day → 1, "X day(s)" → X, "X month(s)" → X*30, "X year"/annual → X*365.
+ */
+function planToDays(plan: string | null | undefined): number | null {
+  if (!plan) return null;
+  const p = plan.toLowerCase();
+  if (/\b24\s*h/.test(p)) return 1;
+  const day = p.match(/(\d+)\s*day/);
+  if (day) return Number(day[1]);
+  const year = p.match(/(\d+)\s*year/);
+  if (year) return Number(year[1]) * 365;
+  if (/\b(year|annual|yearly)\b/.test(p)) return 365;
+  const month = p.match(/(\d+)\s*month/);
+  if (month) return Number(month[1]) * 30;
+  return null;
 }
