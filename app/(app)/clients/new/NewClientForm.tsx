@@ -33,6 +33,8 @@ export type Prefill = {
   email: string;
   phone: string;
   note: string;
+  plan?: string;
+  orderDate?: string;
   sub?: number;
 };
 
@@ -118,7 +120,13 @@ export function NewClientForm({
       <input type="hidden" name="providerId" value={providerId} />
       <input type="hidden" name="type" value={type} />
       <input type="hidden" name="sub" value={sub} />
-      {prefill && <input type="hidden" name="orderId" value={prefill.orderId} />}
+      {prefill && (
+        <>
+          <input type="hidden" name="orderId" value={prefill.orderId} />
+          <input type="hidden" name="plan" value={prefill.plan ?? ""} />
+          <input type="hidden" name="orderDate" value={prefill.orderDate ?? ""} />
+        </>
+      )}
 
       <NBCard className="bg-yellow">
         <h2 className="mb-4 text-xl font-bold">Details</h2>

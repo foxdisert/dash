@@ -45,6 +45,8 @@ export async function importClient(
   const note = str(formData.get("note"));
   const contact = readContact(formData);
   const orderId = Number(formData.get("orderId")) || null;
+  const plan = str(formData.get("plan")) ?? null;
+  const orderDate = str(formData.get("orderDate")) ?? null;
 
   if (!providerId) return { ok: false, message: "Pick a provider." };
   if (type === "mag" && !mac)
@@ -63,6 +65,8 @@ export async function importClient(
         mac,
         expireDate,
         packageIds,
+        plan,
+        orderDate,
         note,
         ...contact,
         source: "imported",
@@ -103,6 +107,8 @@ export async function createClient(
   const note = str(formData.get("note"));
   const contact = readContact(formData);
   const orderId = Number(formData.get("orderId")) || null;
+  const plan = str(formData.get("plan")) ?? null;
+  const orderDate = str(formData.get("orderDate")) ?? null;
   const packs = formData.getAll("pack").map(String).filter(Boolean);
   const pack = packs.includes("all") || packs.length === 0 ? "all" : packs.join(",");
 
@@ -130,6 +136,8 @@ export async function createClient(
         note,
         ...contact,
         packageIds: pack,
+        plan: plan ?? (sub ? `${sub} month(s)` : null),
+        orderDate,
         subMonths: sub,
         expireDate,
         url: result.url,

@@ -20,6 +20,8 @@ type Prefill = {
   email: string;
   phone: string;
   note: string;
+  plan?: string;
+  orderDate?: string;
 };
 
 export function ImportForm({
@@ -51,7 +53,13 @@ export function ImportForm({
     <form action={onSubmit}>
       <NBCard className="max-w-xl bg-blue/30">
         <input type="hidden" name="type" value={type} />
-        {prefill && <input type="hidden" name="orderId" value={prefill.orderId} />}
+        {prefill && (
+          <>
+            <input type="hidden" name="orderId" value={prefill.orderId} />
+            <input type="hidden" name="plan" value={prefill.plan ?? ""} />
+            <input type="hidden" name="orderDate" value={prefill.orderDate ?? ""} />
+          </>
+        )}
 
         <div className="mb-4">
           <NBLabel>Provider</NBLabel>

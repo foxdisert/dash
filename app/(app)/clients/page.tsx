@@ -49,6 +49,8 @@ export default async function ClientsPage() {
         status: effectiveStatus(c.status, c.expireDate),
         source: c.source,
         note: c.note,
+        plan: c.plan,
+        orderDate: c.orderDate,
         customerName: c.customerName,
         customerEmail: c.customerEmail,
         customerPhone: c.customerPhone,

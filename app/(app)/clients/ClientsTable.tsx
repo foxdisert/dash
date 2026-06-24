@@ -24,6 +24,8 @@ export type ClientRow = {
   status: "active" | "expired" | "disabled" | "unknown";
   source: string;
   note: string | null;
+  plan: string | null;
+  orderDate: string | null;
   customerName: string | null;
   customerEmail: string | null;
   customerPhone: string | null;
@@ -65,32 +67,62 @@ export function ClientsTable({
   const params = useSearchParams();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState(
-    params.get("filter") === "expiring" ? "expiring" : "all",
+    params.get("filter") === "expiring" ? "exp7" : "all",
   );
   const [providerFilter, setProviderFilter] = useState("all");
+  const [planFilter, setPlanFilter] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [flash, setFlash] = useState<string | null>(null);
   const [syncingAll, startSyncAll] = useTransition();
 
+  // Distinct plans present, for the plan dropdown.
+  const planOptions = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.plan).filter(Boolean) as string[])).sort(),
+    [rows],
+  );
+
   const filtered = useMemo(() => {
-    return rows.filter((r) => {
+    const out = rows.filter((r) => {
       const q = query.toLowerCase();
       const matchQ =
         !q ||
         (r.username ?? "").toLowerCase().includes(q) ||
         (r.mac ?? "").toLowerCase().includes(q) ||
         (r.note ?? "").toLowerCase().includes(q) ||
+        (r.plan ?? "").toLowerCase().includes(q) ||
         (r.customerName ?? "").toLowerCase().includes(q) ||
         (r.customerEmail ?? "").toLowerCase().includes(q) ||
         (r.customerPhone ?? "").toLowerCase().includes(q);
       const matchProvider =
         providerFilter === "all" || r.providerName === providerFilter;
+      const matchPlan = planFilter === "all" || r.plan === planFilter;
+
       let matchStatus = true;
-      if (statusFilter === "expiring")
+      if (statusFilter === "exp7")
         matchStatus = r.days != null && r.days >= 0 && r.days <= 7;
+      else if (statusFilter === "exp30")
+        matchStatus = r.days != null && r.days >= 0 && r.days <= 30;
       else if (statusFilter !== "all") matchStatus = r.status === statusFilter;
-      return matchQ && matchProvider && matchStatus;
+
+      const od = r.orderDate ?? "";
+      const matchFrom = !fromDate || (od && od >= fromDate);
+      const matchTo = !toDate || (od && od <= toDate);
+
+      return matchQ && matchProvider && matchPlan && matchStatus && matchFrom && matchTo;
     });
-  }, [rows, query, statusFilter, providerFilter]);
+
+    out.sort((a, b) => {
+      if (sortBy === "expiry")
+        return (a.days ?? 9e9) - (b.days ?? 9e9); // soonest expiry first
+      if (sortBy === "order")
+        return (b.orderDate ?? "").localeCompare(a.orderDate ?? ""); // newest order first
+      return b.id - a.id; // recent added
+    });
+    return out;
+  }, [rows, query, statusFilter, providerFilter, planFilter, fromDate, toDate, sortBy]);
 
   function onSyncAll() {
     startSyncAll(async () => {
@@ -104,11 +136,12 @@ export function ClientsTable({
     <div className="space-y-4">
       {/* Controls */}
       <NBCard className="bg-white">
-        <div className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto]">
+        <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
           <NBInput
-            placeholder="Search username, MAC, name, email, phone…"
+            placeholder="Search username, name, email, phone, plan…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            className="md:col-span-2 lg:col-span-2"
           />
           <NBSelect
             value={statusFilter}
@@ -116,10 +149,22 @@ export function ClientsTable({
           >
             <option value="all">All statuses</option>
             <option value="active">Active</option>
+            <option value="exp7">⏳ Expiring ≤ 7 days</option>
+            <option value="exp30">⏳ Expiring ≤ 30 days</option>
             <option value="expired">Expired</option>
             <option value="disabled">Disabled</option>
-            <option value="expiring">Expiring ≤7d</option>
             <option value="unknown">Unknown</option>
+          </NBSelect>
+          <NBSelect
+            value={planFilter}
+            onChange={(e) => setPlanFilter(e.target.value)}
+          >
+            <option value="all">All plans</option>
+            {planOptions.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
           </NBSelect>
           <NBSelect
             value={providerFilter}
@@ -132,16 +177,59 @@ export function ClientsTable({
               </option>
             ))}
           </NBSelect>
+          <div>
+            <NBLabel>Ordered from</NBLabel>
+            <NBInput
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <NBLabel>Ordered to</NBLabel>
+            <NBInput
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </div>
+          <NBSelect value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="recent">Sort: recently added</option>
+            <option value="expiry">Sort: expiry (soonest)</option>
+            <option value="order">Sort: order date (newest)</option>
+          </NBSelect>
           <NBButton color="cyan" onClick={onSyncAll} disabled={syncingAll}>
             {syncingAll ? "Syncing…" : "📡 Sync all"}
           </NBButton>
         </div>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <p className="text-sm text-ink/60">
+            Showing {filtered.length} of {rows.length}.
+          </p>
+          {(query ||
+            statusFilter !== "all" ||
+            planFilter !== "all" ||
+            providerFilter !== "all" ||
+            fromDate ||
+            toDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setStatusFilter("all");
+                setPlanFilter("all");
+                setProviderFilter("all");
+                setFromDate("");
+                setToDate("");
+              }}
+              className="text-sm font-bold underline"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
         {flash && <p className="mt-2 text-sm font-bold">{flash}</p>}
       </NBCard>
-
-      <p className="text-sm text-ink/60">
-        Showing {filtered.length} of {rows.length}.
-      </p>
 
       <div className="space-y-3">
         {filtered.map((r) => (
@@ -213,10 +301,11 @@ function ClientCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-lg font-bold">
-              {row.username ?? row.mac ?? "—"}
+              {row.username ?? row.mac ?? row.customerName ?? "—"}
             </span>
             <NBBadge color="blue">{row.type.toUpperCase()}</NBBadge>
             <NBBadge color={STATUS_COLOR[row.status]}>{row.status}</NBBadge>
+            {row.plan && <span className="nb-badge bg-purple">{row.plan}</span>}
             {row.source === "imported" && (
               <NBBadge color="white">imported</NBBadge>
             )}
@@ -226,9 +315,9 @@ function ClientCard({
             {row.expireDate && ` · expires ${row.expireDate}`}
             {row.days != null &&
               row.days >= 0 &&
-              row.days <= 7 &&
+              row.days <= 30 &&
               ` (${row.days}d left)`}
-            {row.note && ` · ${row.note}`}
+            {row.orderDate && ` · ordered ${row.orderDate}`}
           </p>
 
           {hasContact && (

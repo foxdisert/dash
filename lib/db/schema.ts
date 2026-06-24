@@ -37,6 +37,8 @@ export const clients = sqliteTable(
     customerPhone: text("customer_phone"),
     country: text("country"),
     packageIds: text("package_ids"), // comma-separated bouquet ids, or "all"
+    plan: text("plan"), // plan label, e.g. "12 Months Package Premium"
+    orderDate: text("order_date"), // YYYY-MM-DD of the originating order
     subMonths: integer("sub_months"),
     expireDate: text("expire_date"), // YYYY-MM-DD
     status: text("status").notNull().default("unknown"), // active | expired | disabled | unknown

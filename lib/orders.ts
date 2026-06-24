@@ -77,6 +77,8 @@ export type OrderPrefill = {
   email: string;
   phone: string;
   note: string;
+  plan: string;
+  orderDate: string;
   sub?: number; // best-effort months parsed from the plan label
 };
 
@@ -94,6 +96,8 @@ export function orderPrefill(o: Order): OrderPrefill {
     email: o.email ?? "",
     phone: o.whatsapp ?? "",
     note: noteParts.join(" · "),
+    plan: o.planLabel ?? "",
+    orderDate: (o.submittedAt ?? "").slice(0, 10),
     sub: monthMatch ? Number(monthMatch[1]) : undefined,
   };
 }
